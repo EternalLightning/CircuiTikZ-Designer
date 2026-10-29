@@ -9,10 +9,14 @@ import {
 	MainController,
 	PathComponent,
 	PathSaveObject,
+	Pole,
+	PoleEntry,
+	poleChoices,
 	PropertyCategories,
 	SaveController,
 	SectionHeaderProperty,
 	SelectionController,
+	SliderProperty,
 	SnappingInfo,
 	SnapPoint,
 	Strokable,
@@ -52,9 +56,13 @@ function oppositeDirection(direction: WireDirection): WireDirection {
  * a wire has directions between points
  */
 export type WireSaveObject = PathSaveObject & {
+	preserveGeometry?: boolean
 	directions: WireDirection[]
 	startArrow?: string
 	endArrow?: string
+	middleArrow?: string
+	middleArrowPosition?: number
+	poles?: Pole
 	stroke?: StrokeInfo
 }
 
@@ -63,30 +71,35 @@ export type ArrowTip = ChoiceEntry & {
 	setBack: number
 	strokeFactor?: number
 	refXY?: SVG.Point
+	svgId?: string
 }
 
 export const arrowTips: ArrowTip[] = [
-	{ key: "none", name: "none", tikz: "", setBack: 0 },
+	{ key: "none", name: "无", tikz: "", setBack: 0 },
 	{ key: "stealth", name: "stealth", tikz: "stealth", setBack: 0.5 },
-	{ key: "stealthR", name: "stealth reversed", tikz: "stealth reversed", setBack: 0.5 },
+	{ key: "stealthR", name: "stealth（反向）", tikz: "stealth reversed", setBack: 0.5 },
 	{ key: "latex", name: "latex", tikz: "latex", setBack: 0.5 },
-	{ key: "latexR", name: "latex reversed", tikz: "latex reversed", setBack: 0.5 },
+	{ key: "latexR", name: "latex（反向）", tikz: "latex reversed", setBack: 0.5 },
+	{ key: "stealthMeta", name: "Stealth", tikz: "Stealth", setBack: 0.5, svgId: "stealth" },
+	{ key: "latexMeta", name: "Latex", tikz: "Latex", setBack: 0.5, svgId: "latex" },
 	{ key: "to", name: "to", tikz: "to", setBack: 0.1, strokeFactor: 0.7, refXY: new SVG.Point(-1, -0.6) },
 	{
 		key: "toR",
-		name: "to reversed",
+		name: "to（反向）",
 		tikz: "to reversed",
 		setBack: 0.4,
 		strokeFactor: 0.7,
 		refXY: new SVG.Point(-1, -0.6),
 	},
-	{ key: "line", name: "line", tikz: "|", setBack: 0, strokeFactor: 1, refXY: new SVG.Point(-0.5, -0.5) },
+	{ key: "line", name: "线段", tikz: "|", setBack: 0, strokeFactor: 1, refXY: new SVG.Point(-0.5, -0.5) },
 ]
 export const defaultArrowTip = arrowTips[0]
 /**
  * The component responsible for multi segmented wires (polylines)/wires
  */
 export class WireComponent extends Strokable(PathComponent) {
+	/** Sampled curves retain their shape during import grid alignment. */
+	public preserveGeometry = false
 	private static jsonID = "wire"
 	static {
 		CircuitComponent.jsonSaveMap.set(WireComponent.jsonID, WireComponent)
@@ -110,10 +123,18 @@ export class WireComponent extends Strokable(PathComponent) {
 
 	public arrowEndChoice: ChoiceProperty<ArrowTip>
 	public arrowStartChoice: ChoiceProperty<ArrowTip>
+	public arrowMiddleChoice: ChoiceProperty<ArrowTip>
+	public arrowMiddlePosition: SliderProperty
 	private startArrowElement: SVG.Element
 	private endArrowElement: SVG.Element
+	private middleArrowElement: SVG.Element
 
 	public static arrowSymbols: Map<string, SVGSymbolElement>
+
+	private poleStart: ChoiceProperty<PoleEntry>
+	private poleEnd: ChoiceProperty<PoleEntry>
+	private poleStartElement: SVG.Element
+	private poleEndElement: SVG.Element
 
 	private onlyStraight: boolean
 	private defaultArrowHead: boolean
@@ -125,7 +146,7 @@ export class WireComponent extends Strokable(PathComponent) {
 		this.referencePoints = []
 		this.pointLimit = -1
 		this.wireDirections = []
-		this.displayName = "Wire"
+		this.displayName = "导线"
 
 		this.wire = CanvasController.instance.canvas.polyline()
 		this.wire.fill("none")
@@ -145,8 +166,25 @@ export class WireComponent extends Strokable(PathComponent) {
 		this.visualization.add(this.draggableWire)
 		this.snappingPoints = []
 
-		this.properties.add(PropertyCategories.options, new SectionHeaderProperty("Arrows", undefined, "arrows:header"))
-		this.arrowStartChoice = new ChoiceProperty("Start", arrowTips, defaultArrowTip, undefined, "arrows:start")
+		this.properties.add(
+			PropertyCategories.options,
+			new SectionHeaderProperty("端子", undefined, "options:poles_header")
+		)
+		this.poleStart = new ChoiceProperty<PoleEntry>(
+			"起点",
+			poleChoices,
+			poleChoices[0],
+			undefined,
+			"options:poles_start"
+		)
+		this.poleEnd = new ChoiceProperty<PoleEntry>("终点", poleChoices, poleChoices[0], undefined, "options:poles_end")
+		this.poleStart.addChangeListener(() => this.updatePoles())
+		this.poleEnd.addChangeListener(() => this.updatePoles())
+		this.properties.add(PropertyCategories.options, this.poleStart)
+		this.properties.add(PropertyCategories.options, this.poleEnd)
+
+		this.properties.add(PropertyCategories.options, new SectionHeaderProperty("箭头", undefined, "arrows:header"))
+		this.arrowStartChoice = new ChoiceProperty("起点", arrowTips, defaultArrowTip, undefined, "arrows:start")
 		this.arrowStartChoice.addChangeListener((ev) => {
 			this.updateArrowTypesAndColors()
 			this.update()
@@ -154,7 +192,7 @@ export class WireComponent extends Strokable(PathComponent) {
 		this.properties.add(PropertyCategories.options, this.arrowStartChoice)
 
 		this.arrowEndChoice = new ChoiceProperty(
-			"End",
+			"终点",
 			arrowTips,
 			this.defaultArrowHead ? arrowTips[3] : defaultArrowTip,
 			undefined,
@@ -165,6 +203,34 @@ export class WireComponent extends Strokable(PathComponent) {
 			this.update()
 		})
 		this.properties.add(PropertyCategories.options, this.arrowEndChoice)
+
+		this.arrowMiddleChoice = new ChoiceProperty(
+			"中段",
+			arrowTips,
+			defaultArrowTip,
+			undefined,
+			"arrows:middle"
+		)
+		this.arrowMiddleChoice.addChangeListener((ev) => {
+			this.updateArrowTypesAndColors()
+			this.update()
+		})
+		this.properties.add(PropertyCategories.options, this.arrowMiddleChoice)
+
+		this.arrowMiddlePosition = new SliderProperty(
+			"位置",
+			0.05,
+			0.95,
+			0.01,
+			new SVG.Number(0.5, ""),
+			true,
+			"中段箭头沿导线的相对位置",
+			"arrows:middle_position"
+		)
+		this.arrowMiddlePosition.addChangeListener((ev) => {
+			this.update()
+		})
+		this.properties.add(PropertyCategories.options, this.arrowMiddlePosition)
 
 		if (!WireComponent.arrowSymbols) {
 			WireComponent.arrowSymbols = new Map<string, SVGSymbolElement>()
@@ -192,7 +258,7 @@ export class WireComponent extends Strokable(PathComponent) {
 			this.startArrowElement.addTo(this.visualization)
 			this.startArrowElement.stroke({ color: arrowColor, opacity: this.strokeInfo.opacity })
 			this.startArrowElement.fill({ color: arrowColor, opacity: this.strokeInfo.opacity })
-			const arrowPath = document.getElementById(this.arrowStartChoice.value.key)
+			const arrowPath = document.getElementById(this.arrowStartChoice.value.svgId ?? this.arrowStartChoice.value.key)
 			for (const element of arrowPath.children) {
 				this.startArrowElement.node.append(element.cloneNode(true))
 			}
@@ -205,11 +271,27 @@ export class WireComponent extends Strokable(PathComponent) {
 			this.endArrowElement.addTo(this.visualization)
 			this.endArrowElement.stroke({ color: arrowColor, opacity: this.strokeInfo.opacity })
 			this.endArrowElement.fill({ color: arrowColor, opacity: this.strokeInfo.opacity })
-			const arrowPath = document.getElementById(this.arrowEndChoice.value.key)
+			const arrowPath = document.getElementById(this.arrowEndChoice.value.svgId ?? this.arrowEndChoice.value.key)
 			for (const element of arrowPath.children) {
 				this.endArrowElement.node.append(element.cloneNode(true))
 			}
 		}
+
+		this.middleArrowElement?.remove()
+		this.middleArrowElement = null
+		if (this.arrowMiddleChoice.value.key != defaultArrowTip.key) {
+			this.middleArrowElement = CanvasController.instance.canvas.group()
+			this.middleArrowElement.addTo(this.visualization)
+			this.middleArrowElement.stroke({ color: arrowColor, opacity: this.strokeInfo.opacity })
+			this.middleArrowElement.fill({ color: arrowColor, opacity: this.strokeInfo.opacity })
+			const arrowPath = document.getElementById(this.arrowMiddleChoice.value.svgId ?? this.arrowMiddleChoice.value.key)
+			for (const element of arrowPath.children) {
+				this.middleArrowElement.node.append(element.cloneNode(true))
+			}
+		}
+
+		if (this.poleStartElement) this.visualization.add(this.poleStartElement)
+		if (this.poleEndElement) this.visualization.add(this.poleEndElement)
 	}
 
 	private updateArrowTransforms(startArrowReference: SVG.Point, endArrowReference: SVG.Point) {
@@ -246,6 +328,99 @@ export class WireComponent extends Strokable(PathComponent) {
 				}).multiply({ translate: refXY.toArray() })
 			)
 			this.endArrowElement.attr("stroke-width", strokeWidth * (this.arrowEndChoice.value.strokeFactor ?? 0))
+		}
+
+		if (this.arrowMiddleChoice.value.key != defaultArrowTip.key) {
+			const arrow = this.pointAndDirectionAt(this.arrowMiddlePosition.value.value)
+			if (arrow) {
+				const rotationAngleDeg = (Math.atan2(arrow.direction.y, arrow.direction.x) * 180) / Math.PI
+				const refXY = this.arrowMiddleChoice.value.refXY ?? new SVG.Point(-1, -0.5)
+
+				this.middleArrowElement.transform(
+					new SVG.Matrix({
+						translate: arrow.point.toArray(),
+						rotate: rotationAngleDeg,
+						scale: [scale, scale],
+					}).multiply({ translate: refXY.toArray() })
+				)
+				this.middleArrowElement.attr(
+					"stroke-width",
+					strokeWidth * (this.arrowMiddleChoice.value.strokeFactor ?? 0)
+				)
+			}
+		}
+	}
+
+	/**
+	 * Get the point and the direction at a relative position along the wire (0 = start, 1 = end)
+	 */
+	private pointAndDirectionAt(relativePosition: number): { point: SVG.Point; direction: SVG.Point } | null {
+		const points = this.pointsFromCornerPoints()
+		if (points.length < 2) {
+			return null
+		}
+
+		let totalLength = 0
+		const lengths: number[] = []
+		for (let index = 0; index < points.length - 1; index++) {
+			const length = points[index + 1].sub(points[index]).abs()
+			lengths.push(length)
+			totalLength += length
+		}
+		if (totalLength == 0) {
+			return null
+		}
+
+		let remaining = totalLength * Math.min(1, Math.max(0, relativePosition))
+		for (let index = 0; index < lengths.length; index++) {
+			const length = lengths[index]
+			if (remaining <= length || index == lengths.length - 1) {
+				const direction = points[index + 1].sub(points[index])
+				const ratio = length == 0 ? 0 : remaining / length
+				return {
+					point: points[index].add(direction.mul(ratio)),
+					direction: direction.div(direction.abs() || 1),
+				}
+			}
+			remaining -= length
+		}
+		return null
+	}
+
+	private updatePoles() {
+		this.poleStartElement?.remove()
+		this.poleEndElement?.remove()
+		this.poleStartElement = null
+		this.poleEndElement = null
+
+		if (this.poleStart.value.key != "none") {
+			this.poleStartElement = CanvasController.instance.canvas.use("node_" + this.poleStart.value.key)
+			this.visualization.add(this.poleStartElement)
+		}
+		if (this.poleEnd.value.key != "none") {
+			this.poleEndElement = CanvasController.instance.canvas.use("node_" + this.poleEnd.value.key)
+			this.visualization.add(this.poleEndElement)
+		}
+
+		this.updatePolePositions()
+		this.update()
+	}
+
+	private updatePolePositions() {
+		if (this.referencePoints.length < 2) {
+			return
+		}
+		if (this.poleStartElement) {
+			const bbox = this.poleStartElement.bbox()
+			this.poleStartElement.transform({
+				translate: this.referencePoints[0].sub(new SVG.Point(bbox.w / 2, bbox.h / 2)),
+			})
+		}
+		if (this.poleEndElement) {
+			const bbox = this.poleEndElement.bbox()
+			this.poleEndElement.transform({
+				translate: this.referencePoints.at(-1).sub(new SVG.Point(bbox.w / 2, bbox.h / 2)),
+			})
 		}
 	}
 
@@ -461,6 +636,8 @@ export class WireComponent extends Strokable(PathComponent) {
 			)
 		}
 
+		this.updatePolePositions()
+
 		// update visuals
 		this.recalculateSelectionVisuals()
 		this.recalculateSnappingPoints()
@@ -516,6 +693,19 @@ export class WireComponent extends Strokable(PathComponent) {
 				bbox = bbox.merge(endBBox)
 			}
 
+			if (this.middleArrowElement) {
+				const currentTransform = new SVG.Matrix(this.middleArrowElement.transform())
+				const arrowTransform = currentTransform.lmultiply(transformMatrixInv)
+				bbox = bbox.merge(this.middleArrowElement.bbox().transform(arrowTransform))
+			}
+
+			for (const pole of [this.poleStartElement, this.poleEndElement]) {
+				if (pole) {
+					const poleTransform = new SVG.Matrix(pole.transform()).lmultiply(transformMatrixInv)
+					bbox = bbox.merge(pole.bbox().transform(poleTransform))
+				}
+			}
+
 			this.selectionElement.size(bbox.width + selectedBoxWidth, bbox.height + selectedBoxWidth)
 			this.selectionElement.center(bbox.cx, bbox.cy)
 			this.selectionElement.transform(transformMatrix)
@@ -558,6 +748,7 @@ export class WireComponent extends Strokable(PathComponent) {
 
 	public toJson(): WireSaveObject {
 		let data = super.toJson() as WireSaveObject
+		if (this.preserveGeometry) data.preserveGeometry = true
 		data.type = WireComponent.jsonID
 		data.directions = this.wireDirections
 
@@ -567,6 +758,20 @@ export class WireComponent extends Strokable(PathComponent) {
 
 		if (this.arrowEndChoice.value.key !== defaultArrowTip.key) {
 			data.endArrow = this.arrowEndChoice.value.key
+		}
+
+		if (this.arrowMiddleChoice.value.key !== defaultArrowTip.key) {
+			data.middleArrow = this.arrowMiddleChoice.value.key
+			if (this.arrowMiddlePosition.value.value != 0.5) {
+				data.middleArrowPosition = this.arrowMiddlePosition.value.value
+			}
+		}
+
+		if (this.poleStartElement || this.poleEndElement) {
+			data.poles = {
+				start: this.poleStart.value.key != "none" ? this.poleStart.value.key : undefined,
+				end: this.poleEnd.value.key != "none" ? this.poleEnd.value.key : undefined,
+			}
 		}
 
 		return data
@@ -611,6 +816,27 @@ export class WireComponent extends Strokable(PathComponent) {
 			command.options.push(arrowOptions.join(""))
 		}
 
+		if (this.arrowMiddleChoice.value.key !== defaultArrowTip.key) {
+			const position = this.arrowMiddlePosition.value.value.toFixed(2)
+			command.options.push(">=" + this.arrowMiddleChoice.value.tikz)
+			command.options.push(
+				"decoration={markings, mark=at position " + position + " with {\\arrow{>}}}"
+			)
+			command.options.push("postaction={decorate}")
+		}
+
+		if (this.poleStart.value.key != "none" || this.poleEnd.value.key != "none") {
+			command.coordinateNodes = this.referencePoints.map((_, index) => {
+				if (index == 0 && this.poleStart.value.key != "none") {
+					return "node[" + this.poleStart.value.key + "]{}"
+				}
+				if (index == this.referencePoints.length - 1 && this.poleEnd.value.key != "none") {
+					return "node[" + this.poleEnd.value.key + "]{}"
+				}
+				return null
+			})
+		}
+
 		let pointArray = this.referencePoints.map((point) => point)
 		for (let index = 0; index < this.wireDirections.length; index++) {
 			const previousPoint = pointArray[index]
@@ -633,7 +859,13 @@ export class WireComponent extends Strokable(PathComponent) {
 		return new WireComponent(this.onlyStraight, this.defaultArrowHead)
 	}
 
+	public requiredTikzLibraries(): string[] {
+		return [...(this.arrowMiddleChoice.value.key !== defaultArrowTip.key ? ["decorations.markings"] : []),
+			...([this.arrowStartChoice, this.arrowEndChoice, this.arrowMiddleChoice].some(choice => choice.value.svgId) ? ["arrows.meta"] : [])]
+	}
+
 	public remove(): void {
+		this.resizable(false)
 		this.visualization.remove()
 		this.viewSelected(false)
 		this.selectionElement?.remove()
@@ -746,6 +978,7 @@ export class WireComponent extends Strokable(PathComponent) {
 
 	public applyJson(saveObject: WireSaveObject): void {
 		super.applyJson(saveObject)
+		this.preserveGeometry = saveObject.preserveGeometry === true
 		this.wireDirections = saveObject.directions ?? []
 		while (this.wireDirections.length < this.referencePoints.length - 1) {
 			this.wireDirections.push(WireDirection.Straight)
@@ -759,8 +992,28 @@ export class WireComponent extends Strokable(PathComponent) {
 			this.arrowEndChoice.value = arrowTips.find((item) => item.key == saveObject.endArrow)
 		}
 
+		if (saveObject.middleArrow) {
+			this.arrowMiddleChoice.value =
+				arrowTips.find((item) => item.key == saveObject.middleArrow) ?? defaultArrowTip
+			if (saveObject.middleArrowPosition != undefined) {
+				this.arrowMiddlePosition.value = new SVG.Number(saveObject.middleArrowPosition, "")
+			}
+		}
+
+		if (saveObject.poles) {
+			if (saveObject.poles.start != undefined) {
+				this.poleStart.value =
+					poleChoices.find((choice) => choice.key == saveObject.poles.start) ?? poleChoices[0]
+			}
+			if (saveObject.poles.end != undefined) {
+				this.poleEnd.value =
+					poleChoices.find((choice) => choice.key == saveObject.poles.end) ?? poleChoices[0]
+			}
+		}
+
 		this.updateTheme()
 		this.update()
+		this.updatePoles()
 
 		this.finishedPlacing = true
 	}

@@ -25,7 +25,7 @@ export class InfoProperty extends EditableProperty<string> {
 
 		this.labelElement = document.createElement("span") as HTMLSpanElement
 		this.labelElement.classList.add("text-start", "col-auto", "me-3")
-		this.labelElement.innerHTML = this.labelString || "Label"
+		this.labelElement.innerHTML = this.labelString || "标签"
 		row.appendChild(this.labelElement)
 
 		this.valueElement = document.createElement("span") as HTMLSpanElement

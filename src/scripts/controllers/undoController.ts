@@ -19,7 +19,7 @@ export class Undo {
 	private static currentIndex = -1
 
 	//TODO discuss if selections should be remembered or not???
-	public static addState() {
+	public static addState(snapshot?: SaveFileFormat) {
 		// get json object
 		let components = []
 		for (const component of MainController.instance.circuitComponents) {
@@ -28,7 +28,7 @@ export class Undo {
 			components.push(componentObject)
 		}
 
-		let currentState: SaveFileFormat = {
+		let currentState: SaveFileFormat = snapshot ?? {
 			version: currentSaveVersion,
 			tikzSettings: EnvironmentVariableController.instance.toJson(),
 			components: components,

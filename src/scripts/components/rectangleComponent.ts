@@ -100,7 +100,7 @@ export class RectangleComponent extends ShapeComponent {
 		super()
 		this.createAsText = createAsText
 		this.useHyphenation = false
-		this.displayName = "Rectangle"
+		this.displayName = "矩形"
 
 		this.componentVisualization = CanvasController.instance.canvas.rect(0, 0)
 		this.componentVisualization.hide()
@@ -115,7 +115,7 @@ export class RectangleComponent extends ShapeComponent {
 
 		this.visualization.add(this.dragElement)
 
-		this.properties.add(PropertyCategories.text, new SectionHeaderProperty("Text", undefined, "text:header"))
+		this.properties.add(PropertyCategories.text, new SectionHeaderProperty("文本", undefined, "text:header"))
 		this.textAreaProperty = new TextAreaProperty("", undefined, "text:area")
 		if (createAsText) {
 			this.strokeStyleProperty.value = strokeStyleChoices[1]
@@ -126,7 +126,7 @@ export class RectangleComponent extends ShapeComponent {
 		this.properties.add(PropertyCategories.text, this.textAreaProperty)
 
 		this.textAreaPlaceHolder = new BooleanProperty(
-			"Placeholder",
+			"占位文本",
 			createAsText,
 			undefined,
 			undefined,
@@ -139,7 +139,7 @@ export class RectangleComponent extends ShapeComponent {
 		this.properties.add(PropertyCategories.text, this.textAreaPlaceHolder)
 
 		this.textAreaHyphenation = new BooleanProperty(
-			"Hyphenation",
+			"连字符断词",
 			this.useHyphenation,
 			undefined,
 			undefined,
@@ -157,7 +157,7 @@ export class RectangleComponent extends ShapeComponent {
 			isMaterialSymbol: boolean
 			numberID: any
 		}>(
-			"Align",
+			"对齐",
 			[
 				{ key: "LEFT", name: "format_align_left", isMaterialSymbol: true, numberID: TextAlign.LEFT },
 				{ key: "CENTER", name: "format_align_center", isMaterialSymbol: true, numberID: TextAlign.CENTER },
@@ -179,7 +179,7 @@ export class RectangleComponent extends ShapeComponent {
 			isMaterialSymbol: boolean
 			numberID: any
 		}>(
-			"Justify",
+			"垂直对齐",
 			[
 				{ key: "START", name: "vertical_align_top", isMaterialSymbol: true, numberID: TextJustify.START },
 				{ key: "CENTER", name: "vertical_align_center", isMaterialSymbol: true, numberID: TextJustify.CENTER },
@@ -194,14 +194,14 @@ export class RectangleComponent extends ShapeComponent {
 		})
 		this.properties.add(PropertyCategories.text, this.textAreaJustify)
 
-		this.textFontSize = new ChoiceProperty("Fontsize", fontSizes, defaultFontSize, undefined, "text:fontsize")
+		this.textFontSize = new ChoiceProperty("字号", fontSizes, defaultFontSize, undefined, "text:fontsize")
 		this.textFontSize.addChangeListener((ev) => {
 			this.update()
 		})
 		this.properties.add(PropertyCategories.text, this.textFontSize)
 
 		this.textInnerSep = new SliderProperty(
-			"Inner sep",
+			"内边距",
 			0,
 			10,
 			0.1,
@@ -215,7 +215,7 @@ export class RectangleComponent extends ShapeComponent {
 		})
 		this.properties.add(PropertyCategories.text, this.textInnerSep)
 
-		this.textColor = new ColorProperty("Color", null, undefined, undefined, "text:color")
+		this.textColor = new ColorProperty("颜色", null, undefined, undefined, "text:color")
 		this.textColor.addChangeListener((ev) => {
 			this.updateText()
 		})
@@ -380,7 +380,7 @@ export class RectangleComponent extends ShapeComponent {
 	}
 
 	protected buildTikzCommand(command: TikzNodeCommand): void {
-		command.options.push("shape=rectangle")
+		command.options.push("shape=rectangle", "inner sep=0pt")
 		super.buildTikzCommand(command)
 
 		let strokeWidth = this.strokeInfo.width.convertToUnit("px").value
@@ -526,7 +526,7 @@ export class RectangleComponent extends ShapeComponent {
 
 		if (this.textAreaProperty.value || this.createAsText) {
 			let textData: Text = {
-				text: this.textAreaProperty.value || (this.createAsText ? "text component" : ""),
+				text: this.textAreaProperty.value || (this.createAsText ? "文本元件" : ""),
 			}
 			textData.align = this.textAreaAlign.value.numberID ?? TextAlign.LEFT
 			textData.justify = this.textAreaJustify.value.numberID ?? TextJustify.START

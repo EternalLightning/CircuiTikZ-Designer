@@ -62,7 +62,7 @@ export class NodeSymbolComponent extends NodeComponent {
 
 		this.scaleState = new SVG.Point(1, 1)
 		this.scaleProperty = new SliderProperty(
-			"Scale",
+			"缩放",
 			0.1,
 			10,
 			0.01,
@@ -84,7 +84,7 @@ export class NodeSymbolComponent extends NodeComponent {
 		if (symbol.possibleOptions.length > 0 || symbol.possibleEnumOptions.length > 0) {
 			this.properties.add(
 				PropertyCategories.options,
-				new SectionHeaderProperty("Options", undefined, "options:header")
+				new SectionHeaderProperty("选项", undefined, "options:header")
 			)
 			for (const option of symbol.possibleOptions) {
 				const property = new BooleanProperty(
@@ -162,7 +162,7 @@ export class NodeSymbolComponent extends NodeComponent {
 	}
 
 	protected addInfo() {
-		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("Info"))
+		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("信息"))
 		// the tikz id of the component. e.g. "nmos" in "\node[nmos] at (0,0){};"
 		this.properties.add(PropertyCategories.info, new InfoProperty("ID", this.referenceSymbol.tikzName))
 	}

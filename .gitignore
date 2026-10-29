@@ -106,3 +106,10 @@
 *.7z
 *.zip
 /out
+
+# Local browser regression dependencies and npm/native caches
+/.qa-tools/
+/mcp/node_modules/
+
+# Generated regression artifacts (keep locally; regenerate with scripts/qa-*.cjs)
+/qa-results/

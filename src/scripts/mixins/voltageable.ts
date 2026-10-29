@@ -20,6 +20,7 @@ import {
 
 export type VoltageLabel = {
 	label: string
+	convention?: string
 	dist?: number
 	bump?: number
 	shift?: number
@@ -35,23 +36,23 @@ export type VoltageArrowOptions = {
 }
 
 const voltageDirectionChoices: ChoiceEntry[] = [
-	{ key: "", name: "default" },
-	{ key: ">", name: "forward" },
-	{ key: "<", name: "backward" },
+	{ key: "", name: "默认" },
+	{ key: ">", name: "正向" },
+	{ key: "<", name: "反向" },
 ]
 
 const voltagePositionChoices: ChoiceEntry[] = [
-	{ key: "", name: "default" },
-	{ key: "_", name: "below" },
-	{ key: "^", name: "above" },
+	{ key: "", name: "默认" },
+	{ key: "_", name: "下方" },
+	{ key: "^", name: "上方" },
 ]
 
 const voltageStyleChoices: ChoiceEntry[] = [
-	{ key: "", name: "default" },
-	{ key: "american", name: "american" },
-	{ key: "raised", name: "raised" },
-	{ key: "straight", name: "straight" },
-	{ key: "european", name: "european" },
+	{ key: "", name: "默认" },
+	{ key: "american", name: "美式" },
+	{ key: "raised", name: "抬升式" },
+	{ key: "straight", name: "直线" },
+	{ key: "european", name: "欧式" },
 ]
 
 const arrowStrokeWidth = 0.5
@@ -75,6 +76,7 @@ export interface Voltageable {
 
 export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Base: TBase) {
 	abstract class Voltageable extends Base {
+		private importedVoltageConvention?: string
 		protected voltageLabel: MathJaxProperty
 		protected voltageLabelRendering: SVG.Element
 		protected voltageArrowRendering: SVG.Element
@@ -91,7 +93,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			super(...args)
 			this.properties.add(
 				PropertyCategories.voltage,
-				new SectionHeaderProperty("Voltage label", undefined, "voltage:header")
+				new SectionHeaderProperty("电压标注", undefined, "voltage:header")
 			)
 
 			this.voltageLabel = new MathJaxProperty(undefined, undefined, "voltage:label")
@@ -99,7 +101,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			this.properties.add(PropertyCategories.voltage, this.voltageLabel)
 
 			this.voltageStyle = new ChoiceProperty(
-				"Style",
+				"样式",
 				voltageStyleChoices,
 				voltageStyleChoices[0],
 				undefined,
@@ -109,7 +111,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			this.properties.add(PropertyCategories.voltage, this.voltageStyle)
 
 			this.voltagePosition = new ChoiceProperty(
-				"Position",
+				"位置",
 				voltagePositionChoices,
 				voltagePositionChoices[0],
 				undefined,
@@ -119,7 +121,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			this.properties.add(PropertyCategories.voltage, this.voltagePosition)
 
 			this.voltageDirection = new ChoiceProperty(
-				"Direction",
+				"方向",
 				voltageDirectionChoices,
 				voltageDirectionChoices[0],
 				undefined,
@@ -129,33 +131,33 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			this.properties.add(PropertyCategories.voltage, this.voltageDirection)
 
 			this.voltageBumpB = new SliderProperty(
-				"Bump",
+				"弯曲幅度",
 				0,
 				5,
 				0.1,
 				new SVG.Number(1.5, ""),
 				false,
-				"How much the voltage arrow should bump away from the component",
+				"电压箭头偏离元件的弯曲幅度",
 				"voltage:bump"
 			)
 			this.voltageBumpB.addChangeListener((ev) => this.updateVoltageRender())
 			this.properties.add(PropertyCategories.voltage, this.voltageBumpB)
 
 			this.voltageDistanceFromNode = new SliderProperty(
-				"Distance from node",
+				"距节点距离",
 				0,
 				1,
 				0.1,
 				new SVG.Number(0.5, ""),
 				true,
-				"How far away from the component the voltage arrow should start/end",
+				"电压箭头起点/终点与元件之间的距离",
 				"voltage:distance"
 			)
 			this.voltageDistanceFromNode.addChangeListener((ev) => this.updateVoltageRender())
 			this.properties.add(PropertyCategories.voltage, this.voltageDistanceFromNode)
 
 			this.voltageShift = new SliderProperty(
-				"Voltage shift",
+				"电压偏移",
 				-1,
 				2,
 				0.1,
@@ -181,6 +183,10 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 
 		protected abstract updateVoltageRender(): void
 
+		protected getVoltageConvention(): string {
+			return this.importedVoltageConvention ?? EnvironmentVariableController.instance.getGlobalSettings().voltageConvention
+		}
+
 		protected generateVoltageArrow(
 			start: SVG.Point,
 			end: SVG.Point,
@@ -199,7 +205,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			const scaleFactor = Math.abs(scale.x)
 
 			const globalSettings = EnvironmentVariableController.instance.getGlobalSettings()
-			const globalVoltageConvention = globalSettings.voltageConvention
+			const globalVoltageConvention = this.getVoltageConvention()
 			const globalVoltageStyle = globalSettings.voltages
 
 			const voltageStyle = this.voltageStyle.value.key || globalVoltageStyle
@@ -233,7 +239,8 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 				if (!isEuropean) {
 					// only american voltages are affected by this
 					if (voltageOrBattery) {
-						directionBackwards = !directionBackwards
+						if (globalVoltageConvention == "RP" || globalVoltageConvention == "EF")
+							directionBackwards = !directionBackwards
 					} else {
 						// for non voltage sources, invert the direction depending on the global setting
 						if (globalVoltageConvention == "old" || globalVoltageConvention == "RP") {
@@ -547,8 +554,9 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 		public toJson(): PathSaveObject {
 			const data = super.toJson() as PathSaveObject & { voltage?: VoltageLabel }
 
-			if (this.voltageLabel.value != "") {
+			if (this.voltageLabel.value != "" || this.importedVoltageConvention) {
 				const voltageLabel: VoltageLabel = { label: this.voltageLabel.value }
+				voltageLabel.convention = this.importedVoltageConvention
 				voltageLabel.bump = this.voltageBumpB.value.value != 1.5 ? this.voltageBumpB.value.value : undefined
 				voltageLabel.dist =
 					this.voltageDistanceFromNode.value.value != 0.5 ?
@@ -575,14 +583,15 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			super.applyJson(saveObject)
 
 			if (saveObject.voltage) {
+				this.importedVoltageConvention = saveObject.voltage.convention
 				this.voltageLabel.value = saveObject.voltage.label
-				if (saveObject.voltage.shift) {
+				if (saveObject.voltage.shift != undefined) {
 					this.voltageShift.value = new SVG.Number(saveObject.voltage.shift, "")
 				}
-				if (saveObject.voltage.bump) {
+				if (saveObject.voltage.bump != undefined) {
 					this.voltageBumpB.value = new SVG.Number(saveObject.voltage.bump, "")
 				}
-				if (saveObject.voltage.dist) {
+				if (saveObject.voltage.dist != undefined) {
 					this.voltageDistanceFromNode.value = new SVG.Number(saveObject.voltage.dist, "")
 				}
 				if (saveObject.voltage.dir) {
@@ -603,6 +612,7 @@ export function Voltageable<TBase extends AbstractConstructor<PathComponent>>(Ba
 		}
 
 		protected buildTikzVoltage(to: CircuitikzTo): void {
+			if (this.importedVoltageConvention) to.options.push("voltage dir=" + this.importedVoltageConvention)
 			if (this.voltageLabel.value != "") {
 				const options = to.options
 

@@ -10,7 +10,7 @@ import {
 import FileSaver from "file-saver"
 import * as prettier from "prettier"
 import * as SVG from "@svgdotjs/svg.js"
-const parserXML = require("@prettier/plugin-xml").default
+import parserXML from "@prettier/plugin-xml"
 
 /**
  * Contains export functions and controls the "exportModal" (~dialog).
@@ -79,10 +79,18 @@ export class ExportController {
 		this.fileExtensionDropdown = document.getElementById("exportModalFileExtensionDropdown") as HTMLUListElement
 		this.copyButton = document.getElementById("copyExportedContent") as HTMLDivElement
 		this.saveButton = document.getElementById("exportModalSave") as HTMLButtonElement
+		document.getElementById("exportSourceButton")?.addEventListener("click", () => {
+			try {
+				this.heading.textContent = "导出保留源码（上次导入）"
+				this.exportedContent.value = EnvironmentVariableController.instance.getOriginalSource()
+				this.exportedContent.rows = Math.min(30, this.exportedContent.value.split("\n").length)
+				this.export([".tex", ".tikz"])
+			} catch (error) { alert(String(error)) }
+		})
 
 		this.defaultDisplay = this.exportedContent.parentElement.style.display
 
-		let copyButtonDefaultTooltipText = "Copy to clipboard!"
+		let copyButtonDefaultTooltipText = "复制到剪贴板！"
 		this.copyButton.addEventListener("hidden.bs.tooltip", (evt) => {
 			this.copyButton.setAttribute("data-bs-title", copyButtonDefaultTooltipText)
 			this.copyTooltip.dispose()
@@ -96,7 +104,7 @@ export class ExportController {
 	}
 
 	exportJSON(text: string) {
-		this.heading.textContent = "Save JSON"
+		this.heading.textContent = "保存 JSON"
 
 		// create extension select list
 		const extensions = [".json", ".txt"]
@@ -108,42 +116,72 @@ export class ExportController {
 	}
 
 	/**
+	 * Build code without opening a dialog, for both UI and agent exports.
+	 */
+	public getTikzString(): string {
+		try {
+			const context = EnvironmentVariableController.instance.documentContext
+			if (context?.sourceOnly && MainController.instance.circuitComponents.length === 0) throw Error("这是保留源码的文档，请导出原始源码或使用真实 TeX 编译。")
+			const libraries = new Set<string>()
+			const elements = MainController.instance.circuitComponents.map(component => {
+				component.requiredTikzLibraries().forEach(library => libraries.add(library))
+				return "\t" + component.toTikzString()
+			})
+			const settings = EnvironmentVariableController.instance.getTikzSettings()
+			const circuitObject = (save: any): boolean => ["path", "node", "short", "open"].includes(save.type) || (save.type === "group" && save.components.some(circuitObject))
+			const needsCircuit = MainController.instance.circuitComponents.some(component => circuitObject(component.toJson()))
+			return [
+				...(context?.preamble ? [context.preamble] : []),
+				...(libraries.size ? ["\\usetikzlibrary{" + [...libraries].join(", ") + "}"] : []),
+				"\\begin{tikzpicture}[" + ["transform shape", ...(needsCircuit ? settings.environment : [])].join(", ") + "]",
+				...(needsCircuit ? settings.ctikzset.map(setting => "\t\\ctikzset{" + setting + "}") : []),
+				"\t% Paths, nodes and wires:", ...elements, "\\end{tikzpicture}",
+			].join("\n")
+		} finally { this.usedIDs.clear() }
+	}
+
+	/** Standalone SVG with the same symbols and colors as the normal export. */
+	public getSVGString(): string {
+		const main = MainController.instance
+		const theme = main.darkMode
+		const selected = main.circuitComponents.filter(component => component.isSelected)
+		try {
+			for (const component of selected) component.viewSelected(false)
+			main.darkMode = false
+			main.updateTheme()
+			const svg = new SVG.Svg()
+			svg.node.style.fontSize = "10pt"
+			svg.node.style.overflow = "visible"
+			const definitions = new Map<string, SVG.Element>()
+			const components = main.circuitComponents.map(component => component.toSVG(definitions))
+			const defs = new SVG.Defs()
+			for (const element of definitions.values()) defs.add(element)
+			if (definitions.size) svg.add(defs)
+			for (const component of components) svg.add(component)
+			for (const element of svg.find(".draggable")) element.removeClass("draggable")
+			const box = svg.bbox()
+			svg.viewbox(box.x - 4, box.y - 4, Math.max(8, box.width + 8), Math.max(8, box.height + 8))
+			svg.attr({ xmlns: "http://www.w3.org/2000/svg", "xmlns:xlink": "http://www.w3.org/1999/xlink" })
+			return svg.svg().replaceAll(defaultStroke, "#000").replaceAll(defaultFill, "#fff").replaceAll("<br>", "<br/>")
+		} finally {
+			main.darkMode = theme
+			main.updateTheme()
+			for (const component of selected) component.viewSelected(true)
+		}
+	}
+
+	/**
 	 * Shows the exportModal with the CitcuiTikZ code.
 	 */
 	exportCircuiTikZ() {
-		this.heading.innerHTML = "Export CircuiTi<i>k</i>Z code"
+		this.heading.textContent = "导出当前图形的 TikZ 代码"
 		this.exportedContent.parentElement.style.display = this.defaultDisplay
 		// create extension select list
 		const extensions = [".tikz", ".tex", ".pgf"]
 
-		// actually export/create the string
-		{
-			let circuitElements = []
-			let requiredTikzLibraries: Set<string> = new Set<string>()
-			for (const circuitElement of MainController.instance.circuitComponents) {
-				circuitElement.requiredTikzLibraries().forEach((item) => requiredTikzLibraries.add(item))
-				circuitElements.push("\t" + circuitElement.toTikzString())
-			}
-			let libraryStr =
-				requiredTikzLibraries.size > 0 ?
-					"\\usetikzlibrary{" + requiredTikzLibraries.values().toArray().join(", ") + "}"
-				:	""
-
-			const tikzSettings = EnvironmentVariableController.instance.getTikzSettings()
-			let arr = [
-				"\\begin{tikzpicture}" + "[" + ["transform shape"].concat(tikzSettings.environment).join(", ") + "]",
-				...tikzSettings.ctikzset.map((setting) => "\t\\ctikzset{" + setting + "}"),
-				"\t% Paths, nodes and wires:",
-				...circuitElements,
-				"\\end{tikzpicture}",
-			]
-			if (libraryStr) {
-				arr = [libraryStr].concat(arr)
-			}
-			this.exportedContent.rows = arr.length
-			this.exportedContent.value = arr.join("\n")
-		}
-		this.usedIDs.clear()
+		const text = this.getTikzString()
+		this.exportedContent.rows = text.split("\n").length
+		this.exportedContent.value = text
 		this.export(extensions)
 	}
 
@@ -151,7 +189,7 @@ export class ExportController {
 	 * Shows the exportModal with the SVG code.
 	 */
 	exportSVG() {
-		this.heading.textContent = "Export SVG"
+		this.heading.textContent = "导出 SVG"
 		this.exportedContent.parentElement.style.display = this.defaultDisplay
 		// prepare selection and bounding box
 		SelectionController.instance.selectAll()
@@ -236,7 +274,7 @@ export class ExportController {
 		// copy text and adjust tooltip for feedback
 		const copyText = () => {
 			navigator.clipboard.writeText(this.exportedContent.value).then(() => {
-				this.copyButton.setAttribute("data-bs-title", "Copied!")
+				this.copyButton.setAttribute("data-bs-title", "已复制！")
 				this.copyTooltip.dispose()
 				this.copyTooltip = new Tooltip(this.copyButton)
 				this.copyTooltip.show()
@@ -248,7 +286,7 @@ export class ExportController {
 				(this.fileBasename.value.trim() || MainController.instance.designName.value).replace(
 					/[^a-z0-9]/gi,
 					"_"
-				) || "Circuit"
+				) || "电路"
 			FileSaver.saveAs(
 				new Blob([this.exportedContent.value], { type: "text/x-tex;charset=utf-8" }),
 				filename + this.fileExtension.value

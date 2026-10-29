@@ -105,18 +105,18 @@ export class PropertyController {
 
 	private setMultiForm(components: CircuitComponent[]) {
 		this.propertiesEntries.classList.remove("d-none")
-		this.propertiesTitle.innerText = "Selection"
+		this.propertiesTitle.innerText = "所选对象"
 
 		let rows: HTMLElement[] = []
-		let positioning = new ButtonGridProperty(
+		const positioning = new ButtonGridProperty(
 			2,
 			[
-				["Rotate 90° CW", "rotate_right"],
-				["Rotate 90° CCW", "rotate_left"],
-				["Rotate 45° CW", "rotate_right"],
-				["Rotate 45° CCW", "rotate_left"],
-				["Flip vertically", ["flip", "rotateText"]],
-				["Flip horizontally", "flip"],
+				["顺时针旋转 90°", "rotate_right"],
+				["逆时针旋转 90°", "rotate_left"],
+				["顺时针旋转 45°", "rotate_right"],
+				["逆时针旋转 45°", "rotate_left"],
+				["垂直翻转", ["flip", "rotateText"]],
+				["水平翻转", "flip"],
 			],
 			[
 				(ev) => {
@@ -146,24 +146,24 @@ export class PropertyController {
 			],
 			false,
 			[
-				"Rotate the components 90 degrees clockwise",
-				"Rotate the components 90 degrees counter clockwise",
-				"Rotate the components 45 degrees clockwise",
-				"Rotate the components 45 degrees counter clockwise",
-				"Flip the components around its x-axis",
-				"Flip the components around its y-axis",
+				"将元件顺时针旋转 90 度",
+				"将元件逆时针旋转 90 度",
+				"将元件顺时针旋转 45 度",
+				"将元件逆时针旋转 45 度",
+				"沿 x 轴翻转元件",
+				"沿 y 轴翻转元件",
 			]
 		)
 		rows.push(positioning.buildHTML())
 
-		rows.push(new SectionHeaderProperty("Ordering").buildHTML())
+		rows.push(new SectionHeaderProperty("顺序").buildHTML())
 		let ordering = new ButtonGridProperty(
 			2,
 			[
-				["Foreground", ""],
-				["Background", ""],
-				["Forward", ""],
-				["Backward", ""],
+				["置于顶层", ""],
+				["置于底层", ""],
+				["上移一层", ""],
+				["下移一层", ""],
 			],
 			[
 				(ev) =>
@@ -185,23 +185,23 @@ export class PropertyController {
 			],
 			false,
 			[
-				"Bring the components to the foreground",
-				"Move the components to the background",
-				"Move the components one step towards the foreground",
-				"Move the components one step towards the background",
+				"将元件置于顶层",
+				"将元件置于底层",
+				"将元件上移一层",
+				"将元件下移一层",
 			]
 		)
 		rows.push(ordering.buildHTML())
 
-		rows.push(new SectionHeaderProperty("Grouping").buildHTML())
+		rows.push(new SectionHeaderProperty("编组").buildHTML())
 		let grouping = new ButtonGridProperty(
 			1,
-			[["Group", ""]],
+			[["编组", ""]],
 			[(ev) => GroupComponent.group(SelectionController.instance.currentlySelectedComponents)]
 		)
 		rows.push(grouping.buildHTML())
 
-		rows.push(new SectionHeaderProperty("Align").buildHTML())
+		rows.push(new SectionHeaderProperty("对齐").buildHTML())
 		let alignment = new ButtonGridProperty(
 			3,
 			[
@@ -223,14 +223,14 @@ export class PropertyController {
 		)
 		rows.push(alignment.buildHTML())
 
-		rows.push(new SectionHeaderProperty("Distribute").buildHTML())
+		rows.push(new SectionHeaderProperty("分布").buildHTML())
 		let distribute = new ButtonGridProperty(
 			2,
 			[
-				["Center", "horizontal_distribute"],
-				["Spacing", "align_justify_space_even"],
-				["Center", "vertical_distribute"],
-				["Spacing", "align_space_even"],
+				["居中", "horizontal_distribute"],
+				["等间距", "align_justify_space_even"],
+				["居中", "vertical_distribute"],
+				["等间距", "align_space_even"],
 			],
 			[
 				(ev) => SelectionController.instance.distributeSelection(DistributionMode.CENTER, true),
@@ -304,7 +304,7 @@ export class PropertyController {
 
 	private setFormView() {
 		this.viewProperties.classList.remove("d-none")
-		this.propertiesTitle.innerText = "General settings"
+		this.propertiesTitle.innerText = "常规设置"
 
 		let minorSlider = document.getElementById("minorSliderInput") as HTMLInputElement
 		minorSlider.value = CanvasController.instance.majorGridSubdivisions.toString()
@@ -353,7 +353,7 @@ export class PropertyController {
 		for (const element of this.multies) {
 			element.remove()
 		}
-		this.propertiesTitle.innerText = "Properties"
+		this.propertiesTitle.innerText = "属性"
 		this.viewProperties.classList.add("d-none")
 		this.propertiesEntries.classList.add("d-none")
 		this.propertiesEntries.innerText = ""

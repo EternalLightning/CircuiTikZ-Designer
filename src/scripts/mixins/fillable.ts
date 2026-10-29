@@ -34,10 +34,10 @@ export function Fillable<TBase extends AbstractConstructor<CircuitComponent>>(Ba
 				color: "default",
 				opacity: 1,
 			}
-			this.properties.add(PropertyCategories.fill, new SectionHeaderProperty("Fill", undefined, "fill:header"))
+			this.properties.add(PropertyCategories.fill, new SectionHeaderProperty("填充", undefined, "fill:header"))
 
 			this.fillOpacityProperty = new SliderProperty(
-				"Opacity",
+				"不透明度",
 				0,
 				100,
 				1,
@@ -52,7 +52,7 @@ export function Fillable<TBase extends AbstractConstructor<CircuitComponent>>(Ba
 				this.update()
 			})
 
-			this.fillColorProperty = new ColorProperty("Color", null, undefined, undefined, "fill:color")
+			this.fillColorProperty = new ColorProperty("颜色", null, undefined, undefined, "fill:color")
 			this.fillColorProperty.addChangeListener((ev) => {
 				if (ev.value == null) {
 					this.fillInfo.color = "default"

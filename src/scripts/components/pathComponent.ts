@@ -62,6 +62,15 @@ export abstract class PathComponent extends CircuitComponent {
 		this.moveRel(diff)
 	}
 
+	public mapReferencePoints(mapPoint: (point: SVG.Point, index: number) => SVG.Point): void {
+		this.referencePoints = this.referencePoints.map(mapPoint)
+		this.update()
+	}
+
+	public getReferencePoints(): SVG.Point[] {
+		return this.referencePoints.map((point) => point.clone())
+	}
+
 	protected movePointTo(index: number, position: SVG.Point): void {
 		if (index < 0 || index >= this.referencePoints.length) {
 			throw new Error(
@@ -106,7 +115,7 @@ export abstract class PathComponent extends CircuitComponent {
 						this.movePointTo(index, pos)
 					},
 					dragEnd: () => {
-						return startPositions[index].eq(this.referencePoints[index])
+						return !startPositions[index].eq(this.referencePoints[index])
 					},
 				})
 			}

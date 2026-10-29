@@ -2,6 +2,9 @@ import * as SVG from "@svgdotjs/svg.js"
 import { CanvasController, EditableProperty, Undo } from "../internal"
 
 export class SliderProperty extends EditableProperty<SVG.Number> {
+	public get automationRange() {
+		return { min: this.min, max: this.max, step: this.step, restricted: this.restrictToRange, unit: this.value.unit }
+	}
 	public eq(first: SVG.Number, second: SVG.Number): boolean {
 		if (first == null || second == null) {
 			return false

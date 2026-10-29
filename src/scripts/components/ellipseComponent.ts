@@ -30,7 +30,7 @@ export class EllipseComponent extends ShapeComponent {
 
 	public constructor() {
 		super()
-		this.displayName = "Ellipse"
+		this.displayName = "椭圆"
 
 		this.componentVisualization = CanvasController.instance.canvas.ellipse(0, 0)
 		this.componentVisualization.hide()
@@ -110,6 +110,7 @@ export class EllipseComponent extends ShapeComponent {
 		let strokeWidth = this.strokeInfo.width.convertToUnit("px").value
 
 		command.options.push(
+			"inner sep=0pt",
 			"minimum width=" +
 				roundTikz(new SVG.Number(this.size.x - strokeWidth, "px").convertToUnit("cm").value) +
 				"cm"

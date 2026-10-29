@@ -36,13 +36,13 @@ import { lineRectIntersection, pointInsideRect, selectedBoxWidth, selectionSize 
 //TODO: add "line join" to poles, i.e. dot (.): this is essentially just a square with side length = line width (chapter 6.4 in documentation)
 export type PoleEntry = { key: string; name: string; shortcut: string }
 export const poleChoices: PoleEntry[] = [
-	{ key: "none", name: "none", shortcut: "" },
-	{ key: "circ", name: "circ", shortcut: "*" },
-	{ key: "ocirc", name: "ocirc", shortcut: "o" },
-	{ key: "diamondpole", name: "diamond", shortcut: "d" },
-	{ key: "odiamondpole", name: "odiamond", shortcut: null },
-	{ key: "squarepole", name: "square", shortcut: null },
-	{ key: "osquarepole", name: "osquare", shortcut: null },
+	{ key: "none", name: "无", shortcut: "" },
+	{ key: "circ", name: "circ（实心圆点）", shortcut: "*" },
+	{ key: "ocirc", name: "ocirc（空心圆点）", shortcut: "o" },
+	{ key: "diamondpole", name: "diamond（实心菱形）", shortcut: "d" },
+	{ key: "odiamondpole", name: "odiamond（空心菱形）", shortcut: null },
+	{ key: "squarepole", name: "square（实心方块）", shortcut: null },
+	{ key: "osquarepole", name: "osquare（空心方块）", shortcut: null },
 ]
 
 export type Pole = {
@@ -51,6 +51,7 @@ export type Pole = {
 }
 
 export type PathSymbolSaveObject = PathSaveObject & {
+	bipoleThickness?: number
 	id: string
 	scale?: SVG.Point
 	options?: string[]
@@ -62,6 +63,8 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	static {
 		CircuitComponent.jsonSaveMap.set(PathSymbolComponent.jsonID, PathSymbolComponent)
 	}
+	private bipoleThickness?: number
+	private thicknessSymbol?: SVG.Element
 	public referenceSymbol: ComponentSymbol
 
 	private startLine: SVG.Line
@@ -109,7 +112,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 		super()
 		this.scaleState = new SVG.Point(1, 1)
 		this.scaleProperty = new SliderProperty(
-			"Scale",
+			"缩放",
 			0.1,
 			10,
 			0.01,
@@ -137,16 +140,16 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 
 		this.properties.add(
 			PropertyCategories.options,
-			new SectionHeaderProperty("Poles", undefined, "options:poles_header")
+			new SectionHeaderProperty("端子", undefined, "options:poles_header")
 		)
 		this.poleStart = new ChoiceProperty<PoleEntry>(
-			"Start",
+			"起点",
 			poleChoices,
 			poleChoices[0],
 			undefined,
 			"options:poles_start"
 		)
-		this.poleEnd = new ChoiceProperty<PoleEntry>("End", poleChoices, poleChoices[0], undefined, "options:poles_end")
+		this.poleEnd = new ChoiceProperty<PoleEntry>("终点", poleChoices, poleChoices[0], undefined, "options:poles_end")
 		this.poleStart.addChangeListener((ev) => {
 			this.updatePoles()
 		})
@@ -159,7 +162,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 		if (symbol.possibleOptions.length > 0 || symbol.possibleEnumOptions.length > 0) {
 			this.properties.add(
 				PropertyCategories.options,
-				new SectionHeaderProperty("Options", undefined, "options:header")
+				new SectionHeaderProperty("选项", undefined, "options:header")
 			)
 			for (const option of symbol.possibleOptions) {
 				const property = new BooleanProperty(
@@ -245,17 +248,17 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 
 		this.properties.add(
 			PropertyCategories.manipulation,
-			new SectionHeaderProperty("Symbol Orientation", undefined, "manipulation:header")
+			new SectionHeaderProperty("符号方向", undefined, "manipulation:header")
 		)
 
-		this.mirror = new BooleanProperty("Mirror", false, undefined, undefined, "manipulation:mirror")
+		this.mirror = new BooleanProperty("镜像", false, undefined, undefined, "manipulation:mirror")
 		this.mirror.addChangeListener((ev) => {
 			this.scaleState.y *= -1
 			this.update()
 		})
 		this.properties.add(PropertyCategories.manipulation, this.mirror)
 
-		this.invert = new BooleanProperty("Invert", false, undefined, undefined, "manipulation:invert")
+		this.invert = new BooleanProperty("反转", false, undefined, undefined, "manipulation:invert")
 
 		this.invert.addChangeListener((ev) => {
 			this.scaleState.x =
@@ -283,8 +286,8 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 			this.referenceSymbol.tikzName == "american controlled voltage source"
 		) {
 			// in american voltage sources, the internal + and - are inverted, i.e. the symbol is inverted, if the voltage convention is old or RP
-			const globalSettings = EnvironmentVariableController.instance.getGlobalSettings()
-			if (globalSettings.voltageConvention == "old" || globalSettings.voltageConvention == "RP") {
+			const convention = this.getVoltageConvention()
+			if (convention == "old" || convention == "RP") {
 				voltageConventionInvert = -1
 			}
 		}
@@ -358,7 +361,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	}
 
 	protected addInfo() {
-		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("Info"))
+		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("信息"))
 		this.properties.add(PropertyCategories.info, new InfoProperty("ID", this.referenceSymbol.tikzName))
 	}
 
@@ -439,7 +442,21 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 
 	protected updateOptions(): void {
 		this.componentVariant = this.referenceSymbol.getVariant(this.optionsFromProperties())
-		this.componentVisualization.node.setAttribute("href", "#" + this.componentVariant.symbol.id())
+		this.thicknessSymbol?.remove()
+		this.thicknessSymbol = undefined
+		let displaySymbol = this.componentVariant.symbol
+		if (this.bipoleThickness != null && this.bipoleThickness !== 2) {
+			// The library symbols were generated with CircuitikZ's default thickness of 2.
+			const clone = this.componentVariant.symbol.clone(true)
+			CanvasController.instance.canvas.defs().add(clone)
+			for (const element of clone.find("[stroke-width]")) {
+				const width = Number(element.attr("stroke-width"))
+				if (Number.isFinite(width)) element.attr("stroke-width", width * this.bipoleThickness / 2)
+			}
+			this.thicknessSymbol = clone
+			displaySymbol = clone
+		}
+		this.componentVisualization.node.setAttribute("href", "#" + displaySymbol.id())
 
 		let startPinIndex = this.componentVariant.pins.findIndex((value) => value.name === "START")
 		let endPinIndex = this.componentVariant.pins.findIndex((value) => value.name === "END")
@@ -682,6 +699,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 		let data = super.toJson() as PathSymbolSaveObject
 		data.type = PathSymbolComponent.jsonID
 		data.id = this.referenceSymbol.tikzName
+		if (this.bipoleThickness != null) data.bipoleThickness = this.bipoleThickness
 
 		if (this.componentVariant.options.length > 0) {
 			data.options = this.componentVariant.options.map((option) => option.displayName ?? option.name)
@@ -720,6 +738,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	protected buildTikzCommand(command: TikzPathCommand): void {
 		super.buildTikzCommand(command)
 		let options: string[] = [this.referenceSymbol.tikzName]
+		if (this.bipoleThickness != null) options.push("/tikz/circuitikz/bipoles/thickness=" + this.bipoleThickness)
 		options.push(...this.referenceSymbol.optionsToStringArray(this.optionsFromProperties()))
 		if (this.mirror.value) {
 			options.push("mirror")
@@ -750,6 +769,7 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	}
 
 	public remove(): void {
+		this.thicknessSymbol?.remove()
 		SnapDragHandler.snapDrag(this, false)
 		this.resizable(false)
 		this.viewSelected(false)
@@ -759,7 +779,10 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	}
 
 	public copyForPlacement(): PathSymbolComponent {
-		return new PathSymbolComponent(this.referenceSymbol)
+		const copy = new PathSymbolComponent(this.referenceSymbol)
+		copy.bipoleThickness = this.bipoleThickness
+		copy.updateOptions()
+		return copy
 	}
 
 	protected static idNoOptions(id: string): string {
@@ -767,15 +790,17 @@ export class PathSymbolComponent extends Currentable(Voltageable(PathLabelable(N
 	}
 
 	public applyJson(saveObject: PathSymbolSaveObject): void {
+		if (saveObject.bipoleThickness != null && (!Number.isFinite(saveObject.bipoleThickness) || saveObject.bipoleThickness < 0)) throw Error("Invalid bipole thickness")
+		this.bipoleThickness = saveObject.bipoleThickness
 		super.applyJson(saveObject)
 		let options = saveObject.options ?? []
 		this.setPropertiesFromOptions(this.referenceSymbol.getOptionsFromOptionNames(options))
 
-		if (saveObject.scale) {
-			this.scaleState = new SVG.Point(saveObject.scale)
-		}
+		// Serialized scale is user inversion; convention inversion is applied
+		// only to the live symbol in update(), and removed again in toJson().
+		this.scaleState = new SVG.Point(saveObject.scale ?? { x: 1, y: 1 })
 		this.mirror.value = this.scaleState.y < 0
-		this.invert.value = this.scaleState.x * this.voltageConventionInvert() < 0
+		this.invert.value = this.scaleState.x < 0
 		this.scaleProperty.value = new SVG.Number(Math.abs(this.scaleState.x))
 
 		if (saveObject.poles) {

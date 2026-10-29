@@ -30,10 +30,11 @@ const syllableRegex = /([^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy])
 export let textToSVG: TextToSVG
 
 export function loadTextConverter() {
-	return new Promise<void>((resolve) => {
+	return new Promise<void>((resolve, reject) => {
 		TextToSVG.load(
-			"https://cdn.jsdelivr.net/gh/dreampulse/computer-modern-web-font@master/font/Serif/cmunrm.woff",
+			(document.getElementById("textConverterFontLink") as HTMLLinkElement).href,
 			(err, tTSVG) => {
+				if (err) { reject(err); return }
 				textToSVG = tTSVG
 				resolve()
 			}
@@ -345,8 +346,10 @@ export type MathJaxRenderInfo = {
 	width: number
 	// the height of the rendered mathjax element
 	height: number
+	// The logical text box, including bearings and baseline offset, in rendered coordinates.
+	layoutBox: SVG.Box
 }
-export function renderMathJax(text: string, fontSize = 10): MathJaxRenderInfo {
+export function renderMathJax(text: string, fontSize = 10, useTexFontSize = false): MathJaxRenderInfo {
 	// @ts-ignore
 	window.MathJax.texReset()
 	// @ts-ignore
@@ -402,6 +405,11 @@ export function renderMathJax(text: string, fontSize = 10): MathJaxRenderInfo {
 
 	// the current rendering svg viewbox
 	let svgViewBox = svgElement.viewbox()
+	if (useTexFontSize) {
+		// MathJax SVG uses 1000 units per em. Standalone nodes use TeX points (72.27/in).
+		// Keep the existing paragraph renderer's font correction as the default.
+		size = new SVG.Point(svgViewBox.w, svgViewBox.h).mul(fontSize * 96 / (1000 * 72.27))
+	}
 
 	// scale such that px size is actually correct for rendering
 	let scale = size.div(new SVG.Point(svgViewBox.w, svgViewBox.h))
@@ -424,6 +432,7 @@ export function renderMathJax(text: string, fontSize = 10): MathJaxRenderInfo {
 			svgElement.node.height.baseVal.valueInSpecifiedUnits,
 		width: size.x,
 		height: size.y,
+		layoutBox: svgViewBox.transform(m),
 	}
 
 	return renderInfo

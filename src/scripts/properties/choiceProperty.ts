@@ -5,7 +5,7 @@ export type ChoiceEntry = {
 	name: string
 }
 
-const indeterminateChoice: ChoiceEntry = { key: "undetermined", name: "choose one" }
+const indeterminateChoice: ChoiceEntry = { key: "undetermined", name: "请选择" }
 
 export class ChoiceProperty<T extends ChoiceEntry> extends EditableProperty<T> {
 	private label: string

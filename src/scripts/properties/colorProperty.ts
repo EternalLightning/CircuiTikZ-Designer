@@ -3,6 +3,7 @@ import { EditableProperty } from "./editableProperty"
 import { Undo } from "../internal"
 
 export class ColorProperty extends EditableProperty<SVG.Color | null> {
+	public get allowsNull(): boolean { return this.nullable }
 	private label: string
 	private input: HTMLInputElement
 	private nullable: boolean
@@ -34,7 +35,7 @@ export class ColorProperty extends EditableProperty<SVG.Color | null> {
 		{
 			let labelElement = document.createElement("label") as HTMLLabelElement
 			labelElement.classList.add("input-group-text")
-			labelElement.innerHTML = this.label || "Choose color"
+			labelElement.innerHTML = this.label || "选择颜色"
 			col.appendChild(labelElement)
 
 			if (this.nullable) {

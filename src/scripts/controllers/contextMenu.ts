@@ -45,7 +45,7 @@ export class ContextMenu {
 				button.classList.add("dropdown-item")
 				if (entry.disabled === true) {
 					button.disabled = true
-					button.ariaDisabled = true
+					button.ariaDisabled = "true"
 				}
 				button.append(icon, entry.text)
 
@@ -64,14 +64,16 @@ export class ContextMenu {
 	 */
 	onMenuEntryClick(evt) {
 		if (evt.target === this.menuElement) return
-		if (!evt.target?.value || evt.target.ariaDisabled) {
+		const button =
+			evt.target instanceof Element ? (evt.target.closest("button.dropdown-item") as HTMLButtonElement) : null
+		if (!button || !this.menuElement.contains(button) || button.disabled || button.ariaDisabled == "true") {
 			this.onCancel()
 			return
 		} else if (window.TouchEvent && evt instanceof TouchEvent) evt.preventDefault() // prevent following click event
 
 		let callback = this.#onSuccessCallback
 		this.#reset()
-		if (callback) callback(evt.target.value)
+		if (callback) callback(button.value)
 	}
 
 	onCancel() {

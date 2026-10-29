@@ -28,7 +28,7 @@ export class GroupComponent extends CircuitComponent {
 	constructor(components: CircuitComponent[]) {
 		super()
 		MainController.instance.circuitComponents.pop() // add later at specific index instead
-		this.displayName = "Group"
+		this.displayName = "编组"
 		this.snappingPoints = []
 		this.groupedComponents.push(...components)
 		const idx = this.visualization.parent().index(components[0].visualization)
@@ -45,10 +45,10 @@ export class GroupComponent extends CircuitComponent {
 
 		MainController.instance.circuitComponents.splice(firstIndex, 0, this) // added here
 
-		this.properties.add(PropertyCategories.ordering, new SectionHeaderProperty("Grouping"))
+		this.properties.add(PropertyCategories.ordering, new SectionHeaderProperty("编组"))
 		let grouping = new ButtonGridProperty(
 			1,
-			[["Ungroup", ""]],
+			[["取消编组", ""]],
 			[(ev) => this.ungroup()],
 			undefined,
 			undefined,
@@ -152,6 +152,7 @@ export class GroupComponent extends CircuitComponent {
 			componentSaveObjects.push(component.toJson())
 		}
 		let saveObject: GroupSaveObject = {
+			...super.toJson(),
 			type: GroupComponent.jsonID,
 			components: componentSaveObjects,
 		}

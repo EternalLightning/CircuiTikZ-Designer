@@ -66,37 +66,37 @@ export function Currentable<TBase extends AbstractConstructor<PathComponent>>(Ba
 			super(...args)
 			this.properties.add(
 				PropertyCategories.current,
-				new SectionHeaderProperty("Current label", undefined, "current:header")
+				new SectionHeaderProperty("电流标注", undefined, "current:header")
 			)
 
 			this.currentLabel = new MathJaxProperty(undefined, undefined, "current:label")
 			this.currentLabel.addChangeListener((ev) => this.generateCurrentRender())
 			this.properties.add(PropertyCategories.current, this.currentLabel)
 
-			this.currentDirection = new BooleanProperty("Backwards", false, undefined, undefined, "current:backwards")
+			this.currentDirection = new BooleanProperty("反向", false, undefined, undefined, "current:backwards")
 			this.currentDirection.addChangeListener((ev) => {
 				this.updateCurrentRender()
 			})
 			this.properties.add(PropertyCategories.current, this.currentDirection)
 
-			this.currentLabelPosition = new BooleanProperty("Label below", false, undefined, undefined, "current:below")
+			this.currentLabelPosition = new BooleanProperty("标注在下方", false, undefined, undefined, "current:below")
 			this.currentLabelPosition.addChangeListener((ev) => {
 				this.updateCurrentRender()
 			})
 			this.properties.add(PropertyCategories.current, this.currentLabelPosition)
 
-			this.currentPosition = new BooleanProperty("At start", false, undefined, undefined, "current:start")
+			this.currentPosition = new BooleanProperty("位于起点", false, undefined, undefined, "current:start")
 			this.currentPosition.addChangeListener((ev) => this.updateCurrentRender())
 			this.properties.add(PropertyCategories.current, this.currentPosition)
 
 			this.currentDistance = new SliderProperty(
-				"Distance",
+				"距离",
 				0,
 				1,
 				0.1,
 				new SVG.Number(0.5, ""),
 				true,
-				"How far along the line the current arrow is.",
+				"电流箭头沿导线的位置。",
 				"current:distance"
 			)
 			this.currentDistance.addChangeListener((ev) => this.updateCurrentRender())
@@ -225,7 +225,7 @@ export function Currentable<TBase extends AbstractConstructor<PathComponent>>(Ba
 
 			if (saveObject.current) {
 				this.currentLabel.value = saveObject.current.label
-				if (saveObject.current.dist) {
+				if (saveObject.current.dist != undefined) {
 					this.currentDistance.value = new SVG.Number(saveObject.current.dist, "")
 				}
 				this.currentDirection.value =
@@ -259,34 +259,9 @@ export function Currentable<TBase extends AbstractConstructor<PathComponent>>(Ba
 				let labelPosString = labelPositionBelow ? "_" : "^"
 				let dirString = directionBackwards ? "<" : ">"
 
-				if (
-					positionStart == this.defaultPositionIsAtStart &&
-					directionBackwards == this.defaultDirectionIsBackwards
-				) {
-					// only the label is required if both the direction and the position are default
-					if (!labelPositionBelow) {
-						// if the label position is default above, the label is also not required
-						labelPosString = ""
-					}
-					currentString += labelPosString
-				} else {
-					// the direction and the label position are required with their order being determined by position
-
-					if (
-						!labelPositionBelow &&
-						directionBackwards == positionStart &&
-						positionStart == this.defaultPositionIsAtStart
-					) {
-						// exception: the label position is not required if the label position is default above and the direction is the same as the position
-						labelPosString = ""
-					}
-
-					if (positionStart) {
-						currentString += dirString + labelPosString
-					} else {
-						currentString += labelPosString + dirString
-					}
-				}
+				// Emit both modifiers: bare i/i< have source- and convention-
+				// dependent defaults, which can change on export to another host.
+				currentString += positionStart ? dirString + labelPosString : labelPosString + dirString
 
 				currentString += "=$" + this.currentLabel.value + "$"
 				options.push(currentString)

@@ -23,19 +23,19 @@ export type StrokeStyle = ChoiceEntry & {
 }
 
 export const strokeStyleChoices: StrokeStyle[] = [
-	{ key: "solid", name: "solid", dasharray: [1, 0] },
-	{ key: "dotted", name: "dotted", dasharray: [1, 4] },
-	{ key: "denselydotted", name: "densely dotted", dasharray: [1, 2] },
-	{ key: "looselydotted", name: "loosely dotted", dasharray: [1, 8] },
-	{ key: "dashed", name: "dashed", dasharray: [4, 4] },
-	{ key: "denselydashed", name: "densely dashed", dasharray: [4, 2] },
-	{ key: "looselydashed", name: "loosely dashed", dasharray: [4, 8] },
-	{ key: "dashdot", name: "dash dot", dasharray: [4, 2, 1, 2] },
-	{ key: "denselydashdot", name: "densely dash dot", dasharray: [4, 1, 1, 1] },
-	{ key: "looselydashdot", name: "loosely dash dot", dasharray: [4, 4, 1, 4] },
-	{ key: "dashdotdot", name: "dash dot dot", dasharray: [4, 2, 1, 2, 1, 2] },
-	{ key: "denselydashdotdot", name: "densely dash dot dot", dasharray: [4, 1, 1, 1, 1, 1] },
-	{ key: "looselydashdotdot", name: "loosely dash dot dot", dasharray: [4, 4, 1, 4, 1, 4] },
+	{ key: "solid", name: "实线", dasharray: [1, 0] },
+	{ key: "dotted", name: "点线", dasharray: [1, 4] },
+	{ key: "denselydotted", name: "密点线", dasharray: [1, 2] },
+	{ key: "looselydotted", name: "疏点线", dasharray: [1, 8] },
+	{ key: "dashed", name: "虚线", dasharray: [4, 4] },
+	{ key: "denselydashed", name: "密虚线", dasharray: [4, 2] },
+	{ key: "looselydashed", name: "疏虚线", dasharray: [4, 8] },
+	{ key: "dashdot", name: "点划线", dasharray: [4, 2, 1, 2] },
+	{ key: "denselydashdot", name: "密点划线", dasharray: [4, 1, 1, 1] },
+	{ key: "looselydashdot", name: "疏点划线", dasharray: [4, 4, 1, 4] },
+	{ key: "dashdotdot", name: "双点划线", dasharray: [4, 2, 1, 2, 1, 2] },
+	{ key: "denselydashdotdot", name: "密双点划线", dasharray: [4, 1, 1, 1, 1, 1] },
+	{ key: "looselydashdotdot", name: "疏双点划线", dasharray: [4, 4, 1, 4, 1, 4] },
 ]
 export const defaultStrokeStyleChoice = strokeStyleChoices[0]
 
@@ -69,10 +69,10 @@ export function Strokable<TBase extends AbstractConstructor<CircuitComponent>>(B
 
 			this.properties.add(
 				PropertyCategories.stroke,
-				new SectionHeaderProperty("Stroke", undefined, "stroke:header")
+				new SectionHeaderProperty("线条", undefined, "stroke:header")
 			)
 			this.strokeOpacityProperty = new SliderProperty(
-				"Opacity",
+				"不透明度",
 				0,
 				100,
 				1,
@@ -87,7 +87,7 @@ export function Strokable<TBase extends AbstractConstructor<CircuitComponent>>(B
 				this.update()
 			})
 
-			this.strokeColorProperty = new ColorProperty("Color", null, undefined, undefined, "stroke:color")
+			this.strokeColorProperty = new ColorProperty("颜色", null, undefined, undefined, "stroke:color")
 			this.strokeColorProperty.addChangeListener((ev) => {
 				if (ev.value == null) {
 					this.strokeInfo.color = "default"
@@ -100,7 +100,7 @@ export function Strokable<TBase extends AbstractConstructor<CircuitComponent>>(B
 				this.update()
 			})
 			this.strokeWidthProperty = new SliderProperty(
-				"Width",
+				"线宽",
 				0,
 				10,
 				0.1,
@@ -115,7 +115,7 @@ export function Strokable<TBase extends AbstractConstructor<CircuitComponent>>(B
 				this.update()
 			})
 			this.strokeStyleProperty = new ChoiceProperty<StrokeStyle>(
-				"Style",
+				"样式",
 				strokeStyleChoices,
 				defaultStrokeStyleChoice,
 				undefined,

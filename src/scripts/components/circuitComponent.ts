@@ -32,12 +32,15 @@ type Constructor<T = {}> = new (...args: any[]) => T
 export type ComponentSaveObject = {
 	type: string
 	selected?: boolean
+	automationId?: string
 }
 
 /**
  * Every component in the circuit should be deriving from this class.
  */
 export abstract class CircuitComponent {
+	/** Stable across save/load and Undo/Redo; independent of a symbol's TikZ id. */
+	public automationId: string = globalThis.crypto.randomUUID()
 	/**
 	 * the position of the component reference point in world coordinates
 	 */
@@ -149,7 +152,7 @@ export abstract class CircuitComponent {
 
 		this.dragElement = this.visualization
 
-		this.displayName = "Circuit Component"
+		this.displayName = "电路元件"
 		this.properties = new PropertiesCollection()
 		this.addPositioning()
 		this.addZOrdering()
@@ -163,10 +166,10 @@ export abstract class CircuitComponent {
 		let ordering = new ButtonGridProperty(
 			2,
 			[
-				["Foreground", ""],
-				["Background", ""],
-				["Forward", ""],
-				["Backward", ""],
+				["置于顶层", ""],
+				["置于底层", ""],
+				["上移一层", ""],
+				["下移一层", ""],
 			],
 			[
 				(ev) => CanvasController.instance.componentsToForeground([this]),
@@ -176,13 +179,13 @@ export abstract class CircuitComponent {
 			],
 			false,
 			[
-				"Bring the component to the foreground",
-				"Move the component to the background",
-				"Move the component one step towards the foreground",
-				"Move the component one step towards the background",
+				"将元件置于顶层",
+				"将元件置于底层",
+				"将元件上移一层",
+				"将元件下移一层",
 			]
 		)
-		this.properties.add(PropertyCategories.ordering, new SectionHeaderProperty("Ordering"))
+		this.properties.add(PropertyCategories.ordering, new SectionHeaderProperty("顺序"))
 		this.properties.add(PropertyCategories.ordering, ordering)
 	}
 
@@ -193,12 +196,12 @@ export abstract class CircuitComponent {
 		let positioning = new ButtonGridProperty(
 			2,
 			[
-				["Rotate 90° CW", "rotate_right"],
-				["Rotate 90° CCW", "rotate_left"],
-				["Rotate 45° CW", "rotate_right"],
-				["Rotate 45° CCW ", "rotate_left"],
-				["Flip vertically", ["flip", "rotateText"]],
-				["Flip horizontally", "flip"],
+				["顺时针旋转 90°", "rotate_right"],
+				["逆时针旋转 90°", "rotate_left"],
+				["顺时针旋转 45°", "rotate_right"],
+				["逆时针旋转 45°", "rotate_left"],
+				["垂直翻转", ["flip", "rotateText"]],
+				["水平翻转", "flip"],
 			],
 			[
 				(ev) => {
@@ -228,12 +231,12 @@ export abstract class CircuitComponent {
 			],
 			false,
 			[
-				"Rotate the component 90 degrees clockwise",
-				"Rotate the component 90 degrees counter clockwise",
-				"Rotate the component 45 degrees clockwise",
-				"Rotate the component 45 degrees counter clockwise",
-				"Flip the component around its x-axis",
-				"Flip the component around its y-axis",
+				"将元件顺时针旋转 90 度",
+				"将元件逆时针旋转 90 度",
+				"将元件顺时针旋转 45 度",
+				"将元件逆时针旋转 45 度",
+				"沿 x 轴翻转元件",
+				"沿 y 轴翻转元件",
 			]
 		)
 		this.properties.add(PropertyCategories.manipulation, positioning)
@@ -363,6 +366,7 @@ export abstract class CircuitComponent {
 	public toJson(): ComponentSaveObject {
 		let saveObject: ComponentSaveObject = {
 			type: "component",
+			automationId: this.automationId,
 		}
 		return saveObject
 	}
@@ -402,6 +406,12 @@ export abstract class CircuitComponent {
 	 * 2) Override the applyJson method which should contain a super.applyJson call. This method should only handle parameters not already handled by the respective super class(es)
 	 */
 	protected applyJson(saveObject: ComponentSaveObject): void {
+		const hasId = (component: CircuitComponent): boolean =>
+			(component !== this && component.automationId === saveObject.automationId) ||
+			((component as GroupComponent).groupedComponents?.some(hasId) ?? false)
+		if (saveObject.automationId && !MainController.instance.circuitComponents.some(hasId)) {
+			this.automationId = saveObject.automationId
+		}
 		// highest level doesn't do anything (essentially only the type but this is not used here)
 		SnapCursorController.instance.visible = false
 		this.finishedPlacing = true

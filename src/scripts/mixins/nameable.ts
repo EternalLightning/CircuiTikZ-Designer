@@ -31,23 +31,23 @@ export function Nameable<TBase extends AbstractConstructor<CircuitComponent>>(Ba
 				}
 				if (text.match(invalidNameRegEx)) {
 					// check if characters are valid
-					return "Contains forbidden characters!"
+					return "包含非法字符！"
 				}
 				for (const component of MainController.instance.circuitComponents) {
 					// check if another component with the same name already exists
 					if (component != this && "name" in component) {
 						let otherName = component.name as TextProperty
 						if (text !== "" && otherName.value == text) {
-							return "Name is already taken!"
+							return "名称已被占用！"
 						}
 					}
 				}
 				return ""
 			}
-			this.name = new TextProperty("Name", "", "", validator, "info:name")
+			this.name = new TextProperty("名称", "", "", validator, "info:name")
 			this.properties.add(
 				PropertyCategories.info,
-				new SectionHeaderProperty("TikZ name", undefined, "info:nameHeader")
+				new SectionHeaderProperty("TikZ 名称", undefined, "info:nameHeader")
 			)
 			this.properties.add(PropertyCategories.info, this.name)
 		}

@@ -96,7 +96,7 @@ export class SaveController {
 			if (file) {
 				this.loadMessage.textContent = this.loadInput.value.split("\\").pop()
 			} else {
-				this.loadMessage.textContent = "No file selected"
+				this.loadMessage.textContent = "未选择文件"
 			}
 		}).bind(this)
 
@@ -111,18 +111,18 @@ export class SaveController {
 					const input = JSON.parse(inputstring)
 					if (!("version" in input)) {
 						alert(
-							"You are using an old version of the json save file format. Please override all files exported from Circuitikz Designer version 0.6 and older by reexporting your circuit to json to update them to the newest json save file format version (currently: " +
+							"你正在使用旧版 JSON 存档格式。请将 CircuiTikz Designer 0.6 及更早版本导出的文件重新导出为 JSON，以更新到最新存档格式（当前版本：" +
 								currentSaveVersion +
-								" for Circuitikz Designer version " +
+								"，对应 CircuiTikz Designer 版本 " +
 								version +
-								"). Old versions might be deprecated at any time and therefore might not properly load."
+								"）。旧版本格式可能随时被弃用，因而无法正确载入。"
 						)
 					}
 					this.loadFromJSON(input, true)
 					this.loadModal.hide()
 				}
 				reader.onerror = (evt) => {
-					this.loadMessage.textContent = "error reading file"
+					this.loadMessage.textContent = "读取文件出错"
 				}
 			}
 		}).bind(this)

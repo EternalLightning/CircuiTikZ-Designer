@@ -99,7 +99,7 @@ export class ComponentSymbol extends SVG.Symbol {
 							enumOption.hasAttribute("selectNone") ?
 								enumOption.getAttribute("selectNone") == "true"
 							:	true,
-						displayName: enumOption.getAttribute("name") ?? "Choose an option",
+						displayName: enumOption.getAttribute("name") ?? "请选择选项",
 					}
 				}
 			)

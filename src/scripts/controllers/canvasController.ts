@@ -164,13 +164,13 @@ export class CanvasController {
 
 		const oldViewBoxFunction = this.canvas.viewbox
 		this.canvas.viewbox = (...args) => {
-			if (arguments.length > 0) this.invScreenCTM = null
+			if (args.length > 0) this.invScreenCTM = null
 			return oldViewBoxFunction.apply(this.canvas, args)
 		}
 
 		const oldZoomFunction = this.canvas.zoom
 		this.canvas.zoom = (...args) => {
-			if (arguments.length > 0) this.invScreenCTM = null
+			if (args.length > 0) this.invScreenCTM = null
 			return oldZoomFunction.apply(this.canvas, args)
 		}
 
@@ -223,10 +223,10 @@ export class CanvasController {
 		this.onResizeCanvas()
 	}
 
-	public fitView() {
+	public fitView(components = MainController.instance.circuitComponents) {
 		let bbox: SVG.Box = null
-		for (const component of MainController.instance.circuitComponents) {
-			let compBBox = component.visualization.bbox()
+		for (const component of components) {
+			let compBBox = component.visualization.rbox(this.canvas)
 			if (bbox) {
 				bbox = bbox.merge(compBBox)
 			} else {
@@ -235,18 +235,17 @@ export class CanvasController {
 		}
 
 		if (bbox) {
-			let canvasBox = this.canvas.viewbox()
-			let zoomFactor = Math.min(canvasBox.w / bbox.w, canvasBox.h / bbox.h) * 0.98 // sligtly more zoomed out
-			if (zoomFactor * this.zoomCurrent > this.zoomMax) {
-				zoomFactor = this.zoomMax / this.zoomCurrent
-			} else if (zoomFactor * this.zoomCurrent < this.zoomMin) {
-				zoomFactor = this.zoomMin / this.zoomCurrent
-			}
-			let newSize = new SVG.Point(canvasBox.w, canvasBox.h).mul(zoomFactor)
-			canvasBox = new SVG.Box(bbox.cx - newSize.x / 2, bbox.cy - newSize.y / 2, newSize.x, newSize.y)
-			this.canvas.viewbox(canvasBox)
-			this.zoomCurrent *= zoomFactor
-			this.canvas.zoom(this.zoomCurrent, new SVG.Point(bbox.cx, bbox.cy))
+			const bounds = this.canvas.node.getBoundingClientRect()
+			this.zoomCurrent = Math.max(
+				this.zoomMin,
+				Math.min(
+					this.zoomMax,
+					Math.min(bounds.width / Math.max(bbox.w, 1), bounds.height / Math.max(bbox.h, 1)) * 0.9
+				)
+			)
+			const width = bounds.width / this.zoomCurrent
+			const height = bounds.height / this.zoomCurrent
+			this.canvas.viewbox(bbox.cx - width / 2, bbox.cy - height / 2, width, height)
 			this.onResizeCanvas()
 		} else {
 			this.resetView()

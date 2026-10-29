@@ -18,6 +18,10 @@ export type TikzPathCommand = {
 	coordinates: (string | SVG.Point)[]
 	connectors: (string | CircuitikzTo)[]
 	additionalNodes: TikzNodeCommand[]
+	/**
+	 * optional TikZ node commands which are placed directly after the coordinate with the same index
+	 */
+	coordinateNodes?: (string | null)[]
 }
 
 export function buildTikzStringFromNodeCommand(command: TikzNodeCommand): string {
@@ -76,6 +80,10 @@ function convertPathCommand(command: TikzPathCommand): string {
 		const connector = command.connectors[index]
 
 		outputString.push(" " + coordToString(coordinate))
+		const coordinateNode = command.coordinateNodes?.[index]
+		if (coordinateNode) {
+			outputString.push(" " + coordinateNode)
+		}
 		if (typeof connector == "string") {
 			outputString.push(" " + connector)
 		} else {
@@ -84,6 +92,10 @@ function convertPathCommand(command: TikzPathCommand): string {
 	}
 
 	outputString.push(" " + coordToString(command.coordinates.at(-1)))
+	const lastCoordinateNode = command.coordinateNodes?.[command.coordinates.length - 1]
+	if (lastCoordinateNode) {
+		outputString.push(" " + lastCoordinateNode)
+	}
 
 	for (const additionalCommand of command.additionalNodes) {
 		// check that additionalCommand is not null

@@ -1,6 +1,7 @@
 import { CanvasController, EditableProperty, Undo } from "../internal"
 
 export class TextProperty extends EditableProperty<string> {
+	public validateInput(value: string): string { return this.validator(value) }
 	private input: HTMLInputElement
 	private invalidDiv: HTMLDivElement
 
@@ -63,7 +64,7 @@ export class TextProperty extends EditableProperty<string> {
 			//first set what you see to the last known value, which should always be a valid value
 			this.updateHTML()
 			this.changeInvalidStatus("")
-			if (this.value && previousState !== this.value) {
+			if (previousState !== (this.value ?? "")) {
 				Undo.addState()
 			}
 		})
@@ -84,7 +85,7 @@ export class TextProperty extends EditableProperty<string> {
 				this.input.classList.add("is-invalid")
 				this.input.classList.add("is-invalid")
 				this.invalidDiv.classList.remove("d-none")
-				this.invalidDiv.innerHTML = "Invalid! " + msg
+				this.invalidDiv.innerHTML = "无效！ " + msg
 			}
 		}
 	}

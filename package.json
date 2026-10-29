@@ -16,20 +16,18 @@
 		}
 	],
 	"source": "src/pages/index.html",
-	"main": "src/scripts/main.js",
-	"targets": {
-		"main": false
-	},
 	"scripts": {
 		"build": "parcel build --public-url ./",
 		"update": "npx npm-check-updates -u",
 		"prepack": "npm run build",
-		"start": "parcel serve --lazy",
-		"postversion": "git push origin HEAD && node -e \"require('child_process').execSync('git push origin v' + require('./package.json').version, {stdio: 'inherit'})\"",
-		"standalone": "electron-forge start",
-		"electron": "npm run build && electron .",
-		"package": "electron-forge package",
-		"make": "electron-forge make"
+		"start": "parcel serve",
+		"mcp:install": "npm --prefix mcp install",
+		"mcp": "node mcp/server.mjs",
+		"test:mcp": "node scripts/qa-mcp.cjs",
+		"test:mcp:export": "node scripts/qa-mcp-export.cjs",
+		"test:mcp:compile": "node scripts/qa-compile.cjs",
+		"test:tikz": "node scripts/qa-tikz-syntax.cjs",
+		"postversion": "git push origin HEAD && node -e \"require('child_process').execSync('git push origin v' + require('./package.json').version, {stdio: 'inherit'})\""
 	},
 	"browserslist": "> 0.5%, last 2 versions, not dead",
 	"dependencies": {
@@ -38,22 +36,12 @@
 		"@svgdotjs/svg.js": "^3.2.4",
 		"@svgdotjs/svg.panzoom.js": "^2.1.2",
 		"bootstrap": "^5.3.7",
-		"electron-squirrel-startup": "^1.0.1",
 		"file-saver": "^2.0.5",
 		"hotkeys-js": "^3.13.15",
 		"prettier": "^3.6.2",
 		"text-to-svg": "^3.1.5"
 	},
 	"devDependencies": {
-		"@electron-forge/cli": "^7.8.2",
-		"@electron-forge/maker-deb": "^7.8.2",
-		"@electron-forge/maker-rpm": "^7.8.2",
-		"@electron-forge/maker-squirrel": "^7.8.2",
-		"@electron-forge/maker-wix": "^7.8.2",
-		"@electron-forge/maker-zip": "^7.8.2",
-		"@electron-forge/plugin-auto-unpack-natives": "^7.8.2",
-		"@electron-forge/plugin-fuses": "^7.8.2",
-		"@electron/fuses": "^1.8.0",
 		"@parcel/config-default": "^2.15.4",
 		"@parcel/packager-raw-url": "^2.15.4",
 		"@parcel/plugin": "^2.15.4",
@@ -70,7 +58,6 @@
 		"@types/file-saver": "^2.0.7",
 		"@types/text-to-svg": "^3.1.4",
 		"buffer": "^6.0.3",
-		"electron": "^37.2.5",
 		"parcel": "^2.15.4",
 		"path-browserify": "^1.0.1",
 		"posthtml-include": "^2.0.1",

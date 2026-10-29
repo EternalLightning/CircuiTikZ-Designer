@@ -37,7 +37,7 @@ class FloatingActionButton {
 	 * @param {boolean} [isSubButton=true] - `true` creates a small/sub FAB
 	 * @param {ButtonDescription} [desc] - optionally set the button parameters using {@link buttonDescription}
 	 */
-	constructor(instance, isSubButton = true, desc) {
+	constructor(instance, isSubButton = true, desc = undefined) {
 		if (instance instanceof HTMLAnchorElement && instance.classList.contains("btn-floating")) {
 			// existing button
 			this.#instance = instance
@@ -128,7 +128,7 @@ export class FABcontroller {
 	constructor() {
 		this.#container = document.getElementById("floatingActionButtonContainer")
 		this.#subContainer = document.getElementById("subFloatingActionButtonContainer")
-		this.#mainFAB = new FloatingActionButton(document.getElementById("mainFAB", false))
+		this.#mainFAB = new FloatingActionButton(document.getElementById("mainFAB"), false)
 	}
 
 	/**

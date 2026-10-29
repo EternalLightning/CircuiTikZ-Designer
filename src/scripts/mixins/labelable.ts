@@ -49,8 +49,8 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 
 		protected mathJaxLabel: MathJaxProperty
 		protected labelReferenceChoices: ChoiceEntry[] = [
-			{ key: "canvas", name: "Canvas" },
-			{ key: "component", name: "Component" },
+			{ key: "canvas", name: "画布" },
+			{ key: "component", name: "元件" },
 		]
 		protected labelReferenceProperty: ChoiceProperty<ChoiceEntry>
 		protected labelRendering: SVG.Element
@@ -60,14 +60,14 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 		constructor(...args: any[]) {
 			super(...args)
 			//label section
-			this.properties.add(PropertyCategories.label, new SectionHeaderProperty("Label", undefined, "label:header"))
+			this.properties.add(PropertyCategories.label, new SectionHeaderProperty("标注", undefined, "label:header"))
 
 			this.mathJaxLabel = new MathJaxProperty(undefined, undefined, "label:label")
 			this.mathJaxLabel.addChangeListener((ev) => this.generateLabelRender())
 			this.properties.add(PropertyCategories.label, this.mathJaxLabel)
 
 			this.labelReferenceProperty = new ChoiceProperty(
-				"Relative to",
+				"相对于",
 				this.labelReferenceChoices,
 				this.labelReferenceChoices[0],
 				undefined,
@@ -79,7 +79,7 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 			this.properties.add(PropertyCategories.label, this.labelReferenceProperty)
 
 			this.anchorChoice = new ChoiceProperty(
-				"Anchor",
+				"锚点",
 				basicDirections,
 				defaultBasicDirection,
 				undefined,
@@ -89,7 +89,7 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 			this.properties.add(PropertyCategories.label, this.anchorChoice)
 
 			this.positionChoice = new ChoiceProperty(
-				"Position",
+				"位置",
 				basicDirections,
 				defaultBasicDirection,
 				undefined,
@@ -99,7 +99,7 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 			this.properties.add(PropertyCategories.label, this.positionChoice)
 
 			this.labelDistance = new SliderProperty(
-				"Gap",
+				"间距",
 				-0.5,
 				1,
 				0.01,
@@ -111,7 +111,7 @@ export function PositionLabelable<TBase extends AbstractConstructor<CircuitCompo
 			this.labelDistance.addChangeListener((ev) => this.updatePositionedLabel())
 			this.properties.add(PropertyCategories.label, this.labelDistance)
 
-			this.labelColor = new ColorProperty("Color", null, undefined, undefined, "label:color")
+			this.labelColor = new ColorProperty("颜色", null, undefined, undefined, "label:color")
 			this.labelColor.addChangeListener((ev) => {
 				this.updateTheme()
 				this.update()
@@ -253,14 +253,14 @@ export function PathLabelable<TBase extends AbstractConstructor<CircuitComponent
 			super(...args)
 
 			//label section
-			this.properties.add(PropertyCategories.label, new SectionHeaderProperty("Label", undefined, "label:header"))
+			this.properties.add(PropertyCategories.label, new SectionHeaderProperty("标注", undefined, "label:header"))
 
 			this.mathJaxLabel = new MathJaxProperty(undefined, undefined, "label:label")
 			this.mathJaxLabel.addChangeListener((ev) => this.generateLabelRender())
 			this.properties.add(PropertyCategories.label, this.mathJaxLabel)
 
 			this.labelDistance = new SliderProperty(
-				"Gap",
+				"间距",
 				-0.5,
 				1,
 				0.01,
@@ -272,14 +272,14 @@ export function PathLabelable<TBase extends AbstractConstructor<CircuitComponent
 			this.labelDistance.addChangeListener((ev) => this.updatePathLabel())
 			this.properties.add(PropertyCategories.label, this.labelDistance)
 
-			this.labelColor = new ColorProperty("Color", null, undefined, undefined, "label:color")
+			this.labelColor = new ColorProperty("颜色", null, undefined, undefined, "label:color")
 			this.labelColor.addChangeListener((ev) => {
 				this.updateTheme()
 				this.update()
 			})
 			this.properties.add(PropertyCategories.label, this.labelColor)
 
-			this.labelSide = new BooleanProperty("Switch side", undefined, undefined, undefined, "label:side")
+			this.labelSide = new BooleanProperty("切换标注侧", undefined, undefined, undefined, "label:side")
 			this.labelSide.addChangeListener((ev) => this.updatePathLabel())
 			this.properties.add(PropertyCategories.label, this.labelSide)
 		}

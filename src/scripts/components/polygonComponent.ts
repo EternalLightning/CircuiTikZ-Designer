@@ -45,7 +45,7 @@ export class PolygonComponent extends PositionLabelable(Strokable(Fillable(PathC
 
 		this.snappingPoints = []
 		CanvasController.instance.canvas.add(this.visualization)
-		this.displayName = "Polygon"
+		this.displayName = "多边形"
 		this.position = new SVG.Point()
 
 		this.componentVisualization = CanvasController.instance.canvas.polygon()

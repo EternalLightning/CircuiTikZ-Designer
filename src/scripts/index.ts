@@ -3,6 +3,8 @@
  */
 
 import { MainController } from "./internal"
+import { initializeAgent } from "./controllers/agentController"
 
 // @ts-ignore
 window.mainController = MainController.instance
+initializeAgent(MainController.instance)

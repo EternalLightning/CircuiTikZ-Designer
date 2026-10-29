@@ -55,7 +55,7 @@ export class OpenComponent extends Voltageable(PathLabelable(PathComponent)) {
 		super()
 
 		this.scaleProperty = new SliderProperty(
-			"Scale",
+			"缩放",
 			0.1,
 			10,
 			0.01,
@@ -72,16 +72,16 @@ export class OpenComponent extends Voltageable(PathLabelable(PathComponent)) {
 
 		this.properties.add(
 			PropertyCategories.options,
-			new SectionHeaderProperty("Poles", undefined, "options:poles_header")
+			new SectionHeaderProperty("端子", undefined, "options:poles_header")
 		)
 		this.poleStart = new ChoiceProperty<PoleEntry>(
-			"Start",
+			"起点",
 			poleChoices,
 			poleChoices[0],
 			undefined,
 			"options:poles_start"
 		)
-		this.poleEnd = new ChoiceProperty<PoleEntry>("End", poleChoices, poleChoices[0], undefined, "options:poles_end")
+		this.poleEnd = new ChoiceProperty<PoleEntry>("终点", poleChoices, poleChoices[0], undefined, "options:poles_end")
 		this.poleStart.addChangeListener((ev) => {
 			this.updatePoles()
 		})
@@ -93,7 +93,7 @@ export class OpenComponent extends Voltageable(PathLabelable(PathComponent)) {
 
 		this.componentVisualization = CanvasController.instance.canvas.line().fill("none").stroke("none")
 
-		this.displayName = "Short"
+		this.displayName = "开路"
 
 		this.dragline = CanvasController.instance.canvas
 			.line()
@@ -145,7 +145,7 @@ export class OpenComponent extends Voltageable(PathLabelable(PathComponent)) {
 	}
 
 	protected addInfo() {
-		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("Info"))
+		this.properties.add(PropertyCategories.info, new SectionHeaderProperty("信息"))
 		this.properties.add(PropertyCategories.info, new InfoProperty("ID", "short"))
 	}
 

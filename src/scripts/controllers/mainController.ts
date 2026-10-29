@@ -22,6 +22,7 @@ import {
 	ComponentSaveObject,
 	EraseController,
 	RectangleComponent,
+	SimpleTextComponent,
 	EllipseComponent,
 	defaultStroke,
 	defaultFill,
@@ -35,6 +36,8 @@ import {
 	TextProperty,
 	ShortComponent,
 	OpenComponent,
+	ArcComponent,
+	ImportController,
 } from "../internal"
 
 type TabState = {
@@ -63,6 +66,32 @@ export enum Modes {
 	DRAG_PAN,
 	COMPONENT,
 	ERASE,
+}
+
+const symbolGroupTranslations: Record<string, string> = {
+	"Block diagram": "框图",
+	Diodes: "二极管",
+	"Switches, buttons and jumpers": "开关、按钮与跳线",
+	"Sources and generators": "电源与信号源",
+	"Logic gates": "逻辑门",
+	Transistors: "晶体管",
+	Wiring: "布线",
+	"Resistive bipoles": "电阻类二端元件",
+	Miscellaneous: "其他",
+	"RF components": "射频元件",
+	Instruments: "仪表",
+	Inductors: "电感",
+	"Grounds and supply voltages": "接地与电源电压",
+	Amplifiers: "放大器",
+	"Capacitive and dynamic bipoles": "电容与动态二端元件",
+	Tubes: "电子管",
+	Mechanical: "机械元件",
+	Flipflops: "触发器",
+	"Unsorted components": "未分类元件",
+}
+
+function translateGroupName(name: string): string {
+	return symbolGroupTranslations[name] ?? name
 }
 
 // TODO Test
@@ -146,7 +175,7 @@ export class MainController {
 		})
 
 		const fileExportName = document.getElementById("exportModalFileBasename") as HTMLInputElement
-		this.designName = new TextProperty("Design Name", "")
+		this.designName = new TextProperty("设计名称", "")
 		this.designName.addChangeListener(() => {
 			document.title = this.designName.value + (this.designName.value ? " - " : "") + "CircuiTikZ Designer"
 			fileExportName.placeholder =
@@ -165,7 +194,8 @@ export class MainController {
 
 		this.updateTooltips()
 
-		// init exporting
+		// init importing and exporting
+		ImportController.instance
 		ExportController.instance
 		const exportCircuiTikZButton: HTMLButtonElement = document.getElementById(
 			"exportCircuiTikZButton"
@@ -233,6 +263,15 @@ export class MainController {
 			MainController.instance.updateTheme()
 			PropertyController.instance.update()
 			this.isInitDone = true
+		}).catch((error) => {
+			const status = document.getElementById("loadingSpinner")
+			if (status) {
+				status.classList.remove("d-none")
+				status.classList.add("alert", "alert-danger")
+				status.setAttribute("role", "alert")
+				status.textContent = "加载失败，请刷新页面重试。" + (error instanceof Error ? error.message : "")
+			}
+			throw error
 		})
 	}
 
@@ -266,17 +305,22 @@ export class MainController {
 	}
 
 	private async loadMathJax() {
-		var promise = new Promise((resolve) => {
+		var promise = new Promise((resolve, reject) => {
 			if (!("MathJax" in window)) {
 				;(window as any).MathJax = {
+					loader: {
+						load: ["[tex]/textmacros"],
+						source: { "[tex]/textmacros": (document.getElementById("mathJaxTextMacrosLink") as HTMLLinkElement).href },
+					},
 					tex: {
 						inlineMath: { "[+]": [["$", "$"]] },
+						packages: { "[+]": ["textmacros"] },
 					},
 				}
 			}
 			var script = document.createElement("script")
-			script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
-			document.head.appendChild(script)
+			script.src = (document.getElementById("mathJaxLink") as HTMLLinkElement).href
+			script.addEventListener("error", () => reject(new Error("公式引擎加载失败，请刷新页面。")), { once: true })
 
 			script.addEventListener(
 				"load",
@@ -285,8 +329,10 @@ export class MainController {
 				},
 				false
 			)
+			document.head.appendChild(script)
 		})
-		return promise
+		await promise
+		await (window as any).MathJax.startup.promise
 	}
 
 	/**
@@ -409,7 +455,7 @@ export class MainController {
 					if (tabData.open == "false") {
 						let openButton = cell4.appendChild(document.createElement("button"))
 						openButton.classList.add("btn", "btn-primary", "me-2")
-						openButton.innerText = "Open"
+						openButton.innerText = "打开"
 						openButton.addEventListener("click", () => {
 							// set the data in the object store to open
 							let allOpen = true
@@ -446,7 +492,7 @@ export class MainController {
 						if (tabData.id == MainController.instance.tabID) {
 							let infoButton = cell4.appendChild(document.createElement("button"))
 							infoButton.classList.add("btn")
-							infoButton.innerText = "This tab"
+							infoButton.innerText = "当前标签页"
 							infoButton.disabled = true
 							let _ = [cell1, cell2, cell3, cell4].forEach((cell) => {
 								cell.classList.add("bg-primary")
@@ -454,7 +500,7 @@ export class MainController {
 						} else {
 							let closeButton = cell4.appendChild(document.createElement("button"))
 							closeButton.classList.add("btn", "btn-primary")
-							closeButton.innerText = "Highlight tab"
+							closeButton.innerText = "定位此标签页"
 							closeButton.addEventListener("click", () => {
 								// send a message to the broadcast channel to show the tab
 								MainController.instance.sendBroadcastMessage("show", tabData.id)
@@ -468,7 +514,7 @@ export class MainController {
 				cell1.classList.add("text-center")
 				let newTabButton = cell1.appendChild(document.createElement("button"))
 				newTabButton.classList.add("btn", "btn-primary")
-				newTabButton.innerText = "New tab"
+				newTabButton.innerText = "新建标签页"
 				newTabButton.addEventListener("click", () => {
 					// set the data in the object store to open
 					let requestedID = 0
@@ -557,7 +603,7 @@ export class MainController {
 					const switchFavicon = () => {
 						if (darkMode) {
 							favicon.href = alternateLink
-							document.title = "Click here!"
+							document.title = "点此返回！"
 						} else {
 							favicon.href = faviconLink
 							document.title = oldTitle
@@ -642,6 +688,36 @@ export class MainController {
 			broadcastMessage.payload = payload
 		}
 		this.broadcastChannel.postMessage(broadcastMessage)
+	}
+
+	public get isDocumentReady(): boolean {
+		return this.isInitDone && this.db != null && this.tabID >= 0
+	}
+
+	/** Persist an agent edit, including an intentionally empty document. */
+	public persistDocument(): Promise<void> {
+		if (!this.isDocumentReady) return Promise.reject(new Error("Document is still loading."))
+		const transaction = this.db.transaction("tabs", "readwrite")
+		const store = transaction.objectStore("tabs")
+		const request = store.get(this.tabID)
+		request.onsuccess = () => {
+			const data = request.result as TabState
+			if (!data) { transaction.abort(); return }
+			data.data = Undo.getCurrentState()
+			data.designName = this.designName.value || undefined
+			data.settings = {
+				gridVisible: this.canvasController.gridVisible,
+				majorGridSizecm: this.canvasController.majorGridSizecm,
+				majorGridSubdivisions: this.canvasController.majorGridSubdivisions,
+				viewBox: this.canvasController.canvas.viewbox(),
+				viewZoom: this.canvasController.currentZoom,
+			}
+			store.put(data)
+		}
+		return new Promise((resolve, reject) => {
+			transaction.oncomplete = () => { this.sendBroadcastMessage("update"); resolve() }
+			transaction.onerror = transaction.onabort = () => reject(transaction.error ?? new Error("Unable to save document."))
+		})
 	}
 
 	private saveCurrentState(closeTab = true) {
@@ -770,6 +846,10 @@ export class MainController {
 			SaveController.instance.load()
 			return false
 		})
+		hotkeys("ctrl+shift+o,command+shift+o", () => {
+			ImportController.instance.show()
+			return false
+		})
 		hotkeys("ctrl+e,command+e", () => {
 			ExportController.instance.exportCircuiTikZ()
 			return false
@@ -826,6 +906,7 @@ export class MainController {
 			{ shortcut: "alt+n,option+n", component: "PMOS" },
 			{ shortcut: "x", component: "Plain style crossing node" },
 			{ shortcut: "alt+x,option+x", component: "Jumper-style crossing node" },
+			{ shortcut: "a", component: "Arc arrow" },
 			{ shortcut: ".", component: "Connected terminal" },
 			{ shortcut: "alt+.,option+.", component: "Unconnected terminal" },
 		]
@@ -860,6 +941,7 @@ export class MainController {
 			mode: "cors",
 			credentials: "same-origin",
 		})
+		if (!response.ok) throw new Error("元件库加载失败：" + response.status)
 		const textContent = await response.text()
 
 		// Parse & add to DOM
@@ -907,7 +989,7 @@ export class MainController {
 
 	private addShapeComponentsToOffcanvas(leftOffcanvasAccordion: HTMLDivElement, leftOffcanvasOC: Offcanvas) {
 		// Add shapes accordion area
-		let groupName = "Basic"
+		let groupName = "基础"
 		const collapseGroupID = "collapseGroup-" + groupName.replace(/[^\d\w\-\_]+/gi, "-")
 
 		const accordionGroup = leftOffcanvasAccordion.appendChild(document.createElement("div"))
@@ -937,9 +1019,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "short path")
+			addButton.setAttribute("searchData", "short path 短接 短路线")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Short"
+			addButton.title = "短接"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -963,9 +1045,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "open path")
+			addButton.setAttribute("searchData", "open path 开路 断路")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Open"
+			addButton.title = "开路"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -986,13 +1068,32 @@ export class MainController {
 			svgIcon.circle(5).fill("none").stroke({ color: defaultStroke, width: 1 }).center(25, -7)
 		}
 
+		//Add simple, coordinate-only text
+		{
+			const addButton = accordionItemBody.appendChild(document.createElement("div"))
+			addButton.classList.add("libComponent")
+			addButton.setAttribute("searchData", "simple text label node 简单文本 文字 标注")
+			addButton.ariaRoleDescription = "button"
+			addButton.title = "简单文本"
+			const listener = (ev: MouseEvent | TouchEvent) => {
+				ev.preventDefault()
+				this.switchMode(Modes.DRAG_PAN)
+				ComponentPlacer.instance.placeComponent(new SimpleTextComponent())
+				leftOffcanvasOC.hide()
+			}
+			addButton.addEventListener("mouseup", listener)
+			addButton.addEventListener("touchstart", listener, { passive: false })
+			const icon = SVG.SVG().addTo(addButton).viewbox(-1, -14, 30, 15)
+			icon.text("Aa").fill(defaultStroke).font({ family: "Computer Modern Serif", size: 13 }).move(2, -14)
+		}
+
 		//Add Text
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "text node")
+			addButton.setAttribute("searchData", "text node 文本")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Text"
+			addButton.title = "文本"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1010,7 +1111,7 @@ export class MainController {
 			let svgIcon = SVG.SVG().addTo(addButton)
 			svgIcon.viewbox(-1, -14, 30, 15)
 			svgIcon.text((add) => {
-				add.tspan("Text").fill({ color: defaultStroke })
+				add.tspan("文本").fill({ color: defaultStroke })
 			})
 		}
 
@@ -1018,9 +1119,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "rect rectangle node")
+			addButton.setAttribute("searchData", "rect rectangle node 矩形")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Rectangle/Text"
+			addButton.title = "矩形/文本"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1046,9 +1147,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "ellipse circle node")
+			addButton.setAttribute("searchData", "ellipse circle node 椭圆 圆")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Ellipse"
+			addButton.title = "椭圆"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1079,9 +1180,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "polygon path")
+			addButton.setAttribute("searchData", "polygon path 多边形")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Polygon"
+			addButton.title = "多边形"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1121,9 +1222,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "straight line path")
+			addButton.setAttribute("searchData", "straight line path 直线")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Straight line"
+			addButton.title = "直线"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1147,9 +1248,9 @@ export class MainController {
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "straight arrow path")
+			addButton.setAttribute("searchData", "straight arrow path 直线 箭头")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Straight arrow"
+			addButton.title = "直线箭头"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1180,13 +1281,51 @@ export class MainController {
 				.fill({ color: defaultStroke })
 		}
 
+		//Add arc arrow
+		{
+			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
+			addButton.classList.add("libComponent")
+			addButton.setAttribute("searchData", "arc arrow curved bend path 弧形 箭头 曲线")
+			addButton.ariaRoleDescription = "button"
+			addButton.title = "弧形箭头"
+
+			const listener = (ev: MouseEvent) => {
+				ev.preventDefault()
+
+				this.switchMode(Modes.COMPONENT)
+				if (ComponentPlacer.instance.component) {
+					ComponentPlacer.instance.placeCancel()
+				}
+				ComponentPlacer.instance.placeComponent(new ArcComponent())
+				leftOffcanvasOC.hide()
+			}
+
+			addButton.addEventListener("mouseup", listener)
+			addButton.addEventListener("touchstart", listener, { passive: false })
+
+			let svgIcon = SVG.SVG().addTo(addButton)
+			svgIcon.viewbox(-1, -2, 17, 14)
+			svgIcon
+				.path("M 1 10 Q 8 -2 15 4")
+				.stroke({ color: defaultStroke, width: 1 })
+				.fill("none")
+			svgIcon
+				.polyline([
+					[12.5, 1.3],
+					[15, 4],
+					[11.8, 4.8],
+				])
+				.stroke({ color: defaultStroke, width: 1 })
+				.fill("none")
+		}
+
 		//Add arrow
 		{
 			const addButton: HTMLDivElement = accordionItemBody.appendChild(document.createElement("div"))
 			addButton.classList.add("libComponent")
-			addButton.setAttribute("searchData", "arrow path")
+			addButton.setAttribute("searchData", "arrow path 箭头")
 			addButton.ariaRoleDescription = "button"
-			addButton.title = "Arrow"
+			addButton.title = "箭头"
 
 			const listener = (ev: MouseEvent) => {
 				ev.preventDefault()
@@ -1270,6 +1409,7 @@ export class MainController {
 		this.addShapeComponentsToOffcanvas(leftOffcanvasAccordion, leftOffcanvasOC)
 
 		for (const [groupName, symbols] of groupedSymbols.entries()) {
+			const displayGroupName = translateGroupName(groupName)
 			const collapseGroupID = "collapseGroup-" + groupName.replace(/[^\d\w\-\_]+/gi, "-")
 
 			const accordionGroup = leftOffcanvasAccordion.appendChild(document.createElement("div"))
@@ -1280,7 +1420,7 @@ export class MainController {
 
 			const accordionItemButton = accordionItemHeader.appendChild(document.createElement("button"))
 			accordionItemButton.classList.add("accordion-button", "collapsed")
-			accordionItemButton.innerText = groupName
+			accordionItemButton.innerText = displayGroupName
 			accordionItemButton.setAttribute("aria-controls", collapseGroupID)
 			accordionItemButton.setAttribute("aria-expanded", "false")
 			accordionItemButton.setAttribute("data-bs-target", "#" + collapseGroupID)
@@ -1300,7 +1440,7 @@ export class MainController {
 				addButton.classList.add("libComponent")
 				addButton.setAttribute(
 					"searchData",
-					[symbol.tikzName, symbol.isNodeSymbol ? "node" : "path"]
+					[symbol.tikzName, symbol.isNodeSymbol ? "node" : "path", displayGroupName]
 						.concat(
 							symbol.possibleOptions
 								.map((option) => option.displayName ?? option.name)

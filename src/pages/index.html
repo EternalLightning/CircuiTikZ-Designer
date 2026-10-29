@@ -1,17 +1,7 @@
 <!doctype html>
-<html lang="en-US" data-bs-theme="dark">
+<html lang="zh-CN" data-bs-theme="dark">
 	<head>
-		<!-- Google tag (gtag.js) -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=G-SN05E6G25Q"></script>
-		<script>
-			window.dataLayer = window.dataLayer || []
-			function gtag() {
-				dataLayer.push(arguments)
-			}
-			gtag("js", new Date())
-			gtag("config", "G-SN05E6G25Q", { cookie_flags: "max-age=7200;secure;samesite=strict" })
-		</script>
-		<title>CircuiTikZ Designer</title>
+		<title>TikZ Designer · CircuitikZ</title>
 		<meta name="title" property="og:title" content="CircuiTikZ Designer" />
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content="https://circuit2tikz.tf.fau.de/designer/" />
@@ -30,13 +20,14 @@
 		<meta
 			name="description"
 			property="og:description"
-			content="A GUI for easily drawing circuits with CircuiTikZ components. Draw your circuit, export it to circuitikz or SVG code and include it in your project." />
+			content="使用 CircuiTikZ 元件轻松绘制电路的可视化工具。绘制电路、导出 CircuiTikZ 或 SVG 代码，并直接用于你的项目。" />
 		<meta charset="UTF-8" />
 
 		<link rel="stylesheet" href="../styles/styles.scss" />
-		<link
-			rel="stylesheet"
-			href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+		<link rel="stylesheet" href="../vendor/fonts/material-symbols.css" />
+		<link rel="preload" as="script" href="../vendor/mathjax/tex-svg.js" id="mathJaxLink" />
+		<link rel="preload" as="script" href="../vendor/mathjax/textmacros.js" id="mathJaxTextMacrosLink" />
+		<link rel="preload" as="fetch" crossorigin="anonymous" href="../vendor/fonts/cmunrm.woff" id="textConverterFontLink" />
 		<link
 			rel="preload"
 			href="../data/symbols.svg"
@@ -64,7 +55,7 @@
 						data-bs-toggle-second="tooltip"
 						data-bs-trigger="hover"
 						data-bs-placement="bottom"
-						data-bs-title="Help menu">
+						data-bs-title="帮助">
 						help
 					</a>
 					<div class="vr me-2 d-block d-md-none"></div>
@@ -74,7 +65,7 @@
 						data-bs-toggle="offcanvas"
 						data-bs-target="#ctNavbar"
 						aria-controls="ctNavbar"
-						aria-label="Toggle navigation">
+						aria-label="切换导航">
 						<span class="material-symbols-outlined" id="rightDropdownMenuToggle"> menu </span>
 					</button>
 				</div>
@@ -88,7 +79,7 @@
 							type="button"
 							class="btn-close btn-close-white"
 							data-bs-dismiss="offcanvas"
-							aria-label="Close"
+							aria-label="关闭"
 							data-bs-target="#ctNavbar"></button>
 					</div>
 					<div class="offcanvas-body">
@@ -101,12 +92,24 @@
 								<button
 									type="button"
 									class="dropdown-item"
+									id="importButton"
+									data-bs-toggle="tooltip"
+									data-bs-placement="bottom"
+									data-bs-title="导入 CircuiTikZ 代码 (Ctrl/⌘ + Shift + O)">
+									<span class="material-symbols-outlined toolbarButton">input</span>
+									<span class="d-md-none fs-4"> 导入 CircuiTikZ </span>
+								</button>
+							</li>
+							<li class="nav-item col-12 col-md-auto">
+								<button
+									type="button"
+									class="dropdown-item"
 									id="loadButton"
 									data-bs-toggle="tooltip"
 									data-bs-placement="bottom"
-									data-bs-title="Load a circuit (part) from a JSON file (Ctrl/⌘ + O)">
+									data-bs-title="从 JSON 文件载入电路（部分）(Ctrl/⌘ + O)">
 									<span class="material-symbols-outlined toolbarButton">file_open</span>
-									<span class="d-md-none fs-4"> Load </span>
+									<span class="d-md-none fs-4"> 载入 </span>
 								</button>
 							</li>
 							<li class="nav-item col-12 col-md-auto">
@@ -116,9 +119,9 @@
 									id="saveButton"
 									data-bs-toggle="tooltip"
 									data-bs-placement="bottom"
-									data-bs-title="Save the circuit in a JSON file (Ctrl/⌘ + S)">
+									data-bs-title="将电路保存为 JSON 文件 (Ctrl/⌘ + S)">
 									<span class="material-symbols-outlined toolbarButton">save</span>
-									<span class="d-md-none fs-4"> Save </span>
+									<span class="d-md-none fs-4"> 保存 </span>
 								</button>
 							</li>
 							<li class="nav-item py-2 py-md-1 col-12 col-md-auto">
@@ -132,11 +135,16 @@
 									id="exportCircuiTikZButton"
 									data-bs-toggle="tooltip"
 									data-bs-placement="bottom"
-									data-bs-title="Export the circuit as CircuiTikZ code (Ctrl/⌘ + E)">
+									data-bs-title="导出当前图形的 TikZ 代码 (Ctrl/⌘ + E)">
 									<span class="material-symbols-outlined toolbarButton">code</span>
 									<span class="d-md-none fs-4">
-										<div>Export CircuiTi<i>k</i>Z code</div>
+										<div>导出 CircuiTi<i>k</i>Z 代码</div>
 									</span>
+								</button>
+							</li>
+							<li class="nav-item col-12 col-md-auto">
+								<button type="button" class="dropdown-item" id="exportSourceButton" title="导出上次导入的原始源码和环境定义" disabled>
+									<span class="material-symbols-outlined toolbarButton">source</span><span class="d-md-none fs-4">导出保留源码</span>
 								</button>
 							</li>
 							<li class="nav-item col-12 col-md-auto">
@@ -146,9 +154,9 @@
 									id="exportSVGButton"
 									data-bs-toggle="tooltip"
 									data-bs-placement="bottom"
-									data-bs-title="Export the circuit as SVG code (Ctrl/⌘ + Shift + E)">
+									data-bs-title="将电路导出为 SVG 代码 (Ctrl/⌘ + Shift + E)">
 									<span class="material-symbols-outlined toolbarButton">image</span>
-									<span class="d-md-none fs-4"> Export SVG code </span>
+									<span class="d-md-none fs-4"> 导出 SVG 代码 </span>
 								</button>
 							</li>
 							<li class="nav-item py-2 py-md-1 col-12 col-md-auto">
@@ -168,7 +176,7 @@
 										type="checkbox"
 										id="darkModeSwitch"
 										checked />
-									<label class="d-md-none fs-4" for="darkModeSwitch">Toggle dark mode</label>
+									<label class="d-md-none fs-4" for="darkModeSwitch">切换深色模式</label>
 								</div>
 							</li>
 							<li class="nav-item py-2 py-md-1 col-12 col-md-auto">
@@ -182,7 +190,7 @@
 									data-bs-toggle="modal"
 									data-bs-target="#tabManagementModal">
 									<span class="toolbarButton material-symbols-outlined">tab_group</span>
-									<span class="d-md-none fs-4"> Tab management </span>
+									<span class="d-md-none fs-4"> 标签页管理 </span>
 								</button>
 							</li>
 							<li class="nav-item py-2 py-md-1 col-12 col-md-auto">
@@ -196,7 +204,7 @@
 									data-bs-toggle="modal"
 									data-bs-target="#aboutModal">
 									<span class="toolbarButton material-symbols-outlined">info</span>
-									<span class="d-md-none fs-4"> About </span>
+									<span class="d-md-none fs-4"> 关于 </span>
 								</button>
 							</li>
 						</ul>
@@ -217,7 +225,7 @@
 							role="button"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Open component drawer (Q)"
+							data-bs-title="打开元件抽屉 (Q)"
 							aria-controls="leftOffcanvas"
 							>add</a
 						>
@@ -228,7 +236,7 @@
 							role="button"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Pan or zoom the canvas (Esc)"
+							data-bs-title="平移或缩放画布 (Esc)"
 							>drag_pan</a
 						>
 						<a
@@ -237,7 +245,7 @@
 							role="button"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Draw wires (W)"
+							data-bs-title="绘制导线 (W)"
 							>draw</a
 						>
 						<a
@@ -246,7 +254,7 @@
 							role="button"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Erase components and wires (Del, Backspace)"
+							data-bs-title="擦除元件和导线 (Del、Backspace)"
 							>ink_eraser</a
 						>
 						<div class="vr"></div>
@@ -256,7 +264,7 @@
 							id="undoButton"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Undo (Ctrl/⌘+Z)"
+							data-bs-title="撤销 (Ctrl/⌘+Z)"
 							>undo</a
 						>
 						<a
@@ -265,7 +273,7 @@
 							id="redoButton"
 							data-bs-toggle="tooltip"
 							data-bs-placement="bottom"
-							data-bs-title="Redo (Ctrl/⌘+Y)"
+							data-bs-title="重做 (Ctrl/⌘+Y)"
 							>redo</a
 						>
 					</div>
@@ -273,7 +281,7 @@
 					<include src="pages/canvas.svg"></include>
 					<div class="d-block position-absolute top-50 start-50" id="loadingSpinner">
 						<div class="spinner-border" role="status">
-							<span class="visually-hidden">Loading...</span>
+							<span class="visually-hidden">正在载入…</span>
 						</div>
 					</div>
 				</div>
@@ -282,7 +290,7 @@
 						class="w-100 h-100 bg-body-tertiary border border-secondary rounded d-flex flex-column"
 						id="properties">
 						<h2 class="align-self-center text-center mb-0 p-2 unselectable" id="propertiesTitle">
-							Properties
+							属性
 						</h2>
 						<hr class="m-0" />
 						<div class="d-flex flex-column w-100 px-3 fs-5" id="properties-content">
@@ -293,7 +301,7 @@
 											type="button"
 											class="btn btn-primary flex-grow-1 fs-5"
 											id="resetViewButton">
-											Reset view
+											重置视图
 										</button>
 									</div>
 									<div class="m-0 p-0 d-flex justify-content-between align-items-center">
@@ -301,12 +309,12 @@
 											type="button"
 											class="btn btn-primary flex-grow-1 fs-5"
 											id="fitViewButton">
-											Fit view
+											适应视图
 										</button>
 									</div>
 									<div
 										class="form-check form-switch m-0 p-0 d-flex justify-content-between align-items-center">
-										<span class="form-check-label">Enable grid</span>
+										<span class="form-check-label">显示网格</span>
 										<input
 											class="form-check-input m-0 fs-4"
 											type="checkbox"
@@ -315,7 +323,7 @@
 									</div>
 									<div id="majorSlider" class="">
 										<div class="d-flex w-100 justify-content-between align-items-baseline">
-											<label for="majorSliderInput" class="form-label">Grid cell size</label>
+											<label for="majorSliderInput" class="form-label">网格单元大小</label>
 											<span id="majorLabel">1</span>
 										</div>
 										<input type="range" class="form-range" min="1" max="5" id="majorSliderInput" />
@@ -323,7 +331,7 @@
 									<div id="minorSlider" class="">
 										<div class="d-flex w-100 justify-content-between align-items-baseline">
 											<label for="minorSliderInput" class="form-label"
-												>Grid cell subdivisions</label
+												>网格细分</label
 											>
 											<span id="minorLabel">1</span>
 										</div>
@@ -337,7 +345,7 @@
 									</div>
 									<div
 										class="w-100 border border-info-subtle bg-info-subtle text-info-emphasis rounded p-2 d-flex justify-content-between align-items-center gap-2">
-										<div class="flex-shrink-1">Current grid spacing:</div>
+										<div class="flex-shrink-1">当前网格间距：</div>
 										<span id="gridInfo" class="flex-shrink-0"></span>
 									</div>
 								</div>
@@ -360,8 +368,8 @@
 		<div id="leftOffcanvas" class="offcanvas offcanvas-start" tabindex="-1">
 			<div class="offcanvas-header flex-column gap-3">
 				<div class="d-flex justify-content-between align-items-center w-100">
-					<h5 class="offcanvas-title" id="offcanvasLabel">Symbols</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+					<h5 class="offcanvas-title" id="offcanvasLabel">元件库</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button>
 				</div>
 				<div class="d-flex offcanvas-search align-items-center w-100">
 					<span class="material-symbols-outlined">search</span>
@@ -369,8 +377,8 @@
 						type="search"
 						class="form-control"
 						id="componentFilterInput"
-						placeholder="Search"
-						aria-label="Search" />
+						placeholder="搜索"
+						aria-label="搜索" />
 					<button
 						class="material-symbols-outlined btn px-1 ms-1"
 						id="filterRegexButton"
@@ -378,16 +386,90 @@
 						data-bs-toggle="button"
 						data-bs-toggle-second="tooltip"
 						aria-pressed="false"
-						data-bs-title="Use regular expression">
+						data-bs-title="使用正则表达式">
 						regular_expression
 					</button>
 				</div>
 				<div id="invalid-feedback-text" class="invalid-feedback d-block d-none">
-					Please enter a valid (regex) search string!
+					请输入有效的（正则）搜索内容！
 				</div>
 			</div>
 			<div class="offcanvas-body pt-0">
 				<div class="accordion" id="leftOffcanvasAccordion"></div>
+			</div>
+		</div>
+
+		<!-- Modal (import CircuiTikZ code) -->
+		<div
+			class="modal fade"
+			id="importModal"
+			aria-labelledby="importModalLabel"
+			aria-hidden="true"
+			tabindex="-1"
+			role="dialog">
+			<div class="modal-dialog modal-lg modal-dialog-scrollable">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h1 class="modal-title fs-3" id="importModalLabel">导入 TikZ / CircuitikZ</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+					</div>
+					<div class="modal-body d-flex flex-column gap-2">
+						<p class="mb-1">
+							粘贴 CircuiTi<i>k</i>Z 环境或 TikZ 图片中的代码。支持带
+							<code>to[...]</code> 的元件、导线（<code>--</code>、<code>-|</code>、<code>|-</code>）、弧线与弯曲、命名坐标（<code>\coordinate</code> 及 <code>(A)</code> 引用）、节点符号、标注、电压、电流、端子与箭头。
+							支持函数曲线、贝塞尔控制点、数值循环、计算宏及命名样式。建议每次导入一幅图，并检查导入提示。
+						</p>
+						<textarea
+							id="importTikzContent"
+							class="form-control font-monospace"
+							rows="14"
+							spellcheck="false"
+							style="font-family: Consolas, monospace"
+							placeholder="\begin{circuitikz}&#10;  \draw (0,0) to[R, l=$R_1$] (2,0);&#10;\end{circuitikz}"></textarea>
+						<details>
+							<summary>环境定义（宏、颜色、字体和宏包）</summary>
+							<textarea id="importTikzPreamble" class="form-control font-monospace mt-2" rows="4" maxlength="131072" spellcheck="false" aria-label="TikZ 环境定义" placeholder="\definecolor{chapter}{HTML}{0984e3}&#10;\newcommand{\jj}{\mathrm{j}}"></textarea>
+						</details>
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="importSourceOnly" />
+							<label class="form-check-label" for="importSourceOnly">保留源码模式</label>
+							<div class="form-text">保存完整源码供导出和编译，不转换为画布对象。适用于尚不能可视化编辑的语法。</div>
+						</div>
+						<div class="d-flex flex-wrap gap-2 align-items-center">
+							<label class="btn btn-outline-secondary icon-button mb-0" for="importFileInput">
+								<span class="material-symbols-outlined">upload_file</span>载入文件
+							</label>
+							<input
+								id="importFileInput"
+								type="file"
+								class="visually-hidden"
+								accept=".tex,.tikz,.pgf,.txt,.circuitikz" />
+							<button type="button" class="btn btn-outline-secondary" id="importExampleButton">
+								插入示例
+							</button>
+							<span class="small text-body-secondary">
+								解析仅在浏览器本地进行。
+							</span>
+						</div>
+						<div id="importStatus" class="small"></div>
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="importCheckGrid" />
+							<label class="form-check-label" for="importCheckGrid">导入时自动对齐网格</label>
+							<div class="form-text">使用当前网格间距；保留运放等多引脚元件和过密连接点的必要偏移。</div>
+						</div>
+					</div>
+					<div class="modal-footer justify-content-between">
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" value="" id="importCheckRemove" />
+							<label class="form-check-label" for="importCheckRemove">
+								移除现有元件
+							</label>
+						</div>
+						<button type="button" class="btn btn-primary icon-button" id="importTikzButton">
+							<span class="material-symbols-outlined">input</span>导入
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 
@@ -402,8 +484,8 @@
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h1 class="modal-title fs-3">Load JSON</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<h1 class="modal-title fs-3">载入 JSON</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
 					</div>
 					<div class="modal-body d-flex flex-column gap-3">
 						<div class="position-relative p-0 border-dashed border-primary border-1 rounded-2">
@@ -415,24 +497,24 @@
 									class="position-absolute top-0 start-0 w-100 h-100 bg-secondary"
 									style="opacity: 0"></div>
 								<span class="material-symbols-outlined" style="font-size: 50px">place_item</span>
-								<span class="fs-4">Drag&Drop here</span>
-								<span class="fs-6">or</span>
-								<button class="btn btn-primary">Browse file</button>
+								<span class="fs-4">拖放到此处</span>
+								<span class="fs-6">或</span>
+								<button class="btn btn-primary">浏览文件</button>
 								<input id="file-input" type="file" accept=".json,.txt" />
 							</div>
 						</div>
-						<span id="load-message">No file selected</span>
+						<span id="load-message">未选择文件</span>
 					</div>
 					<div class="modal-footer justify-content-between">
 						<div
 							class="form-check"
 							data-bs-toggle="tooltip"
-							data-bs-title="If all existing components should be removed before the new components are loaded in or not">
+							data-bs-title="是否在载入新元件之前移除所有现有元件">
 							<input class="form-check-input" type="checkbox" value="" id="loadCheckRemove" />
-							<label class="form-check-label" for="loadCheckRemove"> Remove existing components </label>
+							<label class="form-check-label" for="loadCheckRemove"> 移除现有元件 </label>
 						</div>
 						<button type="button" class="btn btn-primary icon-button" id="loadJSONButton">
-							<span class="material-symbols-outlined">file_open</span>Load
+							<span class="material-symbols-outlined">file_open</span>载入
 						</button>
 					</div>
 				</div>
@@ -450,14 +532,14 @@
 			<div class="modal-dialog modal-lg">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h1 class="modal-title fs-3" id="exportModalLabel">Export</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<h1 class="modal-title fs-3" id="exportModalLabel">导出</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
 					</div>
 					<div class="modal-body">
 						<div
 							id="copyExportedContent"
 							class="copyContentIcon material-symbols-outlined"
-							aria-label="Copy to clipboard"
+							aria-label="复制到剪贴板"
 							role="button">
 							content_copy
 						</div>
@@ -468,26 +550,26 @@
 							<input
 								type="text"
 								class="form-control"
-								aria-label="Filename"
+								aria-label="文件名"
 								id="exportModalFileBasename"
-								placeholder="Circuit" />
+								placeholder="电路" />
 							<input
 								type="text"
 								disabled
 								id="exportModalFileExtension"
 								class="form-control"
-								aria-label="Filename extension" />
+								aria-label="文件扩展名" />
 							<button
 								type="button"
 								class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
 								data-bs-toggle="dropdown"
 								aria-expanded="false">
-								<span class="visually-hidden">Select filename extension</span>
+								<span class="visually-hidden">选择文件扩展名</span>
 							</button>
 							<ul class="dropdown-menu dropdown-menu-end" id="exportModalFileExtensionDropdown"></ul>
 						</div>
 						<button type="button" class="btn btn-primary icon-button" id="exportModalSave">
-							<span class="material-symbols-outlined">save</span>Save
+							<span class="material-symbols-outlined">save</span>保存
 						</button>
 					</div>
 				</div>
@@ -506,22 +588,22 @@
 				<div class="modal-content">
 					<div class="modal-header">
 						<h1 class="modal-title fs-3" id="aboutModalLabel">
-							About CircuiTi<i>k</i>Z-Designer
+							关于 CircuiTi<i>k</i>Z-Designer
 							<span class="badge text-bg-secondary version"> v0.0.0 </span>
 						</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
 					</div>
 					<div class="modal-body">
 						<p>
-							CircuiTi<i>k</i>Z-Designer is part of the Circuit2Ti<i>k</i>Z-Project which was started as a
-							research project at the Institute of Electronics Engineering at the
-							Friedrich-Alexander-Universit&auml;t Erlangen-N&uuml;rnberg. The goal was to create a GUI
-							application for easy and fast drawing of circuits to be used in
-							<a href="https://github.com/circuitikz/circuitikz">CircuiTi<i>k</i>Z</a>.
+							CircuiTi<i>k</i>Z-Designer 是 Circuit2Ti<i>k</i>Z 项目的一部分。该项目最初是
+							Friedrich-Alexander-Universit&auml;t Erlangen-N&uuml;rnberg 电子工程研究所的研究项目，
+							目标是提供一个用于快速、便捷绘制电路并生成
+							<a href="https://github.com/circuitikz/circuitikz">CircuiTi<i>k</i>Z</a> 代码的图形界面。
 						</p>
 						<p>
-							If you find bugs or have suggestions, please feel free to contact us, preferably on
-							<a href="https://github.com/Circuit2TikZ/CircuiTikZ-Designer" target="_blank">Github</a>.
+							如果你发现错误或有改进建议，欢迎通过
+							<a href="https://github.com/Circuit2TikZ/CircuiTikZ-Designer" target="_blank">Github</a>
+							联系我们。
 						</p>
 						<p>&copy; 2025 Philipp Wiedemann, Manuel Kirzinger, Christof Pfannenm&uuml;ller</p>
 					</div>
@@ -569,21 +651,20 @@
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h1 class="modal-title fs-3" id="tabManagementModalLabel">Tab management</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<h1 class="modal-title fs-3" id="tabManagementModalLabel">标签页管理</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
 					</div>
 					<div class="modal-body">
 						<p>
-							CircuiTi<i>k</i>Z Designer can manage a different canvas for each tab to allow multiple
-							drawings at the same time.
+							CircuiTi<i>k</i>Z Designer 可以为每个浏览器标签页管理独立画布，从而同时绘制多张电路图。
 						</p>
-						<p>Total storage used by CircuiTi<i>k</i>Z Designer: <span id="storageUsed"></span></p>
+						<p>CircuiTi<i>k</i>Z Designer 使用的存储空间总计：<span id="storageUsed"></span></p>
 						<table class="table table-striped align-middle">
 							<thead class="align-middle">
 								<tr>
-									<th scope="col">Tab</th>
-									<th scope="col"># components</th>
-									<th scope="col">Storage size</th>
+									<th scope="col">标签页</th>
+									<th scope="col">元件数</th>
+									<th scope="col">存储大小</th>
 									<th scope="col" class="text-end">
 										<button class="btn btn-secondary material-symbols-outlined" , id="probeRefresh">
 											refresh
@@ -609,295 +690,301 @@
 			<div class="modal-dialog modal-dialog-scrollable modal-lg">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h1 class="modal-title fs-3" id="helpModalLabel">Help</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<h1 class="modal-title fs-3" id="helpModalLabel">帮助</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
 					</div>
 					<div class="modal-body">
-						<h1 class="fs-4">General</h1>
+						<h1 class="fs-4">常规</h1>
 						<ul>
 							<li>
-								Saving your circuit regularly as a json file is recommended. This project is still in
-								alpha!
+								建议定期将电路保存为 JSON 文件。本项目仍处于 alpha 阶段！
 							</li>
 							<li>
-								Every new browser tab is a new canvas ready for drawing. You can manage the browser tabs
-								in the settings menu.
+								每个新的浏览器标签页都是一个独立画布，可同时绘制。你可以在设置菜单中管理这些标签页。
 							</li>
 							<li>
-								Closing/Reloading the tab <u>will not</u> erase the drawn circuit. Reopening the tab
-								will reload the circuit.
+								关闭或刷新标签页 <u>不会</u> 清除已绘制的电路；重新打开标签页会重新载入电路。
 							</li>
 							<li>
-								Closing/Reloading the tab <u>will</u> erase the editing history (Undo and redo will be
-								lost).
+								关闭或刷新标签页 <u>会</u> 清除编辑历史（撤销与重做记录将丢失）。
 							</li>
-							<li>Reloading the tab can sometimes be useful if you encounter bugs.</li>
+							<li>如果遇到错误，重新载入标签页有时可以解决问题。</li>
 						</ul>
 						<table class="table table-bordered border-secondary">
 							<thead>
 								<tr class="table-active">
-									<th scope="col">Action</th>
-									<th scope="col">Keyboard & Mouse</th>
-									<th scope="col">Touch</th>
+									<th scope="col">操作</th>
+									<th scope="col">键盘与鼠标</th>
+									<th scope="col">触摸</th>
 								</tr>
 							</thead>
 							<tbody class="table-group-divider">
 								<tr>
-									<td class="table-active">Move <b>canvas</b></td>
-									<td>Hold right click and drag</td>
-									<td>Move with two touches</td>
+									<td class="table-active">移动<b>画布</b></td>
+									<td>按住右键拖动</td>
+									<td>双指移动</td>
 								</tr>
 								<tr>
-									<td class="table-active">Zoom <b>canvas</b></td>
-									<td>Scroll</td>
-									<td>Zoom with two touches</td>
-								</tr>
-							</tbody>
-							<tbody class="table-group-divider">
-								<tr>
-									<td class="table-active">Deactivate <b>snapping</b></td>
-									<td>Hold Shift</td>
-									<td>-</td>
+									<td class="table-active">缩放<b>画布</b></td>
+									<td>滚动滚轮</td>
+									<td>双指缩放</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td class="table-active">Start <b>selection</b></td>
-									<td>Hold left click and drag</td>
-									<td>Drag with one touch on canvas</td>
-								</tr>
-								<tr>
-									<td class="table-active">Add to <b>selection</b></td>
-									<td>Hold Shift before starting a selection</td>
-									<td>-</td>
-								</tr>
-								<tr>
-									<td class="table-active">Remove from <b>selection</b></td>
-									<td>Hold Ctrl/⌘ before starting a selection</td>
-									<td>-</td>
-								</tr>
-								<tr>
-									<td class="table-active">Delete <b>selection</b></td>
-									<td>Press Del/Backspace while components are selected</td>
+									<td class="table-active">关闭<b>吸附</b></td>
+									<td>按住 Shift</td>
 									<td>-</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td class="table-active">Preview <b>wire</b> segment</td>
-									<td>Drag with left click</td>
-									<td>Drag with one touch</td>
+									<td class="table-active">开始<b>选择</b></td>
+									<td>按住左键拖动</td>
+									<td>在画布上单指拖动</td>
 								</tr>
 								<tr>
-									<td class="table-active">Place <b>wire</b> point</td>
-									<td>Release left click</td>
-									<td>Release touch</td>
-								</tr>
-								<tr>
-									<td rowspan="2" class="align-middle table-active">Finish <b>wire</b></td>
-									<td colspan="2" class="text-center">Click same wire point twice</td>
-								</tr>
-								<tr>
-									<td>Press Enter</td>
+									<td class="table-active">添加到<b>选择</b></td>
+									<td>开始框选前按住 Shift</td>
 									<td>-</td>
 								</tr>
 								<tr>
-									<td class="table-active">Straight <b>wire</b></td>
-									<td>Hold Ctrl/⌘</td>
+									<td class="table-active">从<b>选择</b>中移除</td>
+									<td>开始框选前按住 Ctrl/⌘</td>
 									<td>-</td>
 								</tr>
 								<tr>
-									<td class="table-active">Cancel <b>wire</b></td>
-									<td>Press Esc</td>
-									<td>Click move tool</td>
+									<td class="table-active">删除<b>所选内容</b></td>
+									<td>选中元件时按 Del/Backspace</td>
+									<td>-</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td rowspan="2" class="align-middle table-active">Add <b>component</b></td>
-									<td colspan="2" class="text-center">Component drawer ("+")</td>
+									<td class="table-active">预览<b>导线</b>段</td>
+									<td>按住左键拖动</td>
+									<td>单指拖动</td>
 								</tr>
 								<tr>
-									<td>Keyboard shortcuts (see below)</td>
+									<td class="table-active">放置<b>导线</b>点</td>
+									<td>松开左键</td>
+									<td>松开手指</td>
+								</tr>
+								<tr>
+									<td rowspan="2" class="align-middle table-active">结束<b>导线</b></td>
+									<td colspan="2" class="text-center">在同一点再次点击</td>
+								</tr>
+								<tr>
+									<td>按 Enter</td>
+									<td>-</td>
+								</tr>
+								<tr>
+									<td class="table-active"><b>直线</b>导线</td>
+									<td>按住 Ctrl/⌘</td>
+									<td>-</td>
+								</tr>
+								<tr>
+									<td class="table-active">取消<b>导线</b></td>
+									<td>按 Esc</td>
+									<td>点击移动工具</td>
+								</tr>
+							</tbody>
+							<tbody class="table-group-divider">
+								<tr>
+									<td rowspan="2" class="align-middle table-active">添加<b>元件</b></td>
+									<td colspan="2" class="text-center">元件抽屉（"+"）</td>
+								</tr>
+								<tr>
+									<td>键盘快捷键（见下文）</td>
 									<td></td>
 								</tr>
 								<tr>
-									<td class="table-active">Move <b>component</b></td>
-									<td>Hold left click and drag component</td>
-									<td>Drag component with one touch</td>
+									<td class="table-active">移动<b>元件</b></td>
+									<td>按住左键拖动元件</td>
+									<td>单指拖动元件</td>
 								</tr>
 								<tr>
-									<td class="table-active">Adjust <b>component</b></td>
+									<td class="table-active">调整<b>元件</b></td>
 									<td colspan="2" class="text-center">
-										While one component selected:<br />Drag adjustment points
+										选中单个元件时：<br />拖动调整点
 									</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td class="table-active"><b>Align/Distribute</b> components</td>
+									<td class="table-active"><b>对齐/分布</b>元件</td>
 									<td colspan="2" class="text-center">
-										Select multiple components, then use align/distribute buttons
+										选择多个元件后使用对齐/分布按钮
 									</td>
 								</tr>
 								<tr>
-									<td class="table-active">Set <b>Align/Distribute</b> reference</td>
+									<td class="table-active">设置<b>对齐/分布</b>基准</td>
 									<td colspan="2" class="text-center">
-										Click an already selected component while more than one component is selected
+										选中多个元件时，点击其中一个已选元件
 									</td>
 								</tr>
 							</tbody>
 						</table>
-						<h1 class="fs-4 mt-5">Keyboard Shortcuts</h1>
+						<h1 class="fs-4 mt-5">键盘快捷键</h1>
 						<table class="table table-striped">
 							<thead>
 								<tr>
-									<th scope="col">Category</th>
-									<th scope="col">Shortcut</th>
-									<th scope="col">Description</th>
+									<th scope="col">类别</th>
+									<th scope="col">快捷键</th>
+									<th scope="col">说明</th>
 								</tr>
 							</thead>
 							<tbody class="table-group-divider">
 								<tr>
-									<td>Modes</td>
+									<td>模式</td>
 									<td>Q</td>
-									<td>Open component drawer</td>
+									<td>打开元件抽屉</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>W</td>
-									<td>Start wire drawing tool</td>
+									<td>开始绘制导线</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Del/Backspace</td>
-									<td>Erase components and wires</td>
+									<td>擦除元件和导线</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Esc</td>
-									<td>Return to move tool/ cancel component placement</td>
+									<td>返回移动工具/取消元件放置</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td>IO</td>
+									<td>输入输出</td>
 									<td>Ctrl/⌘ + S</td>
-									<td>Save to JSON</td>
+									<td>保存为 JSON</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + O</td>
-									<td>Load from JSON</td>
+									<td>从 JSON 载入</td>
+								</tr>
+								<tr>
+									<td></td>
+									<td>Ctrl/⌘ + Shift + O</td>
+									<td>导入 CircuiTi<i>k</i>Z 代码</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + E</td>
-									<td>Export CircuiTi<i>k</i>Z code</td>
+									<td>导出 CircuiTi<i>k</i>Z 代码</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + Shift + E</td>
-									<td>Export SVG code</td>
+									<td>导出 SVG 代码</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td>Components</td>
+									<td>元件</td>
 									<td>(Alt/⌥ +) G</td>
-									<td>Place (tailless) ground</td>
+									<td>放置（无引线）接地</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>R</td>
-									<td>Place resistor</td>
+									<td>放置电阻</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) L</td>
-									<td>Place (cute) inductor</td>
+									<td>放置（cute 样式）电感</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) C</td>
-									<td>Place (polarized) capacitor</td>
+									<td>放置（极性）电容</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>D</td>
-									<td>Place diode</td>
+									<td>放置二极管</td>
+								</tr>
+								<tr>
+									<td></td>
+									<td>A</td>
+									<td>放置弧形箭头</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) B</td>
-									<td>Place npn (or pnp) BJT</td>
+									<td>放置 npn（或 pnp）BJT</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) N</td>
-									<td>Place nmos (or pmos) transistor</td>
+									<td>放置 nmos（或 pmos）晶体管</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) X</td>
-									<td>Place (jump) crossing</td>
+									<td>放置（跳线）交叉点</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>(Alt/⌥ +) .</td>
-									<td>Place (un-)connected terminal</td>
+									<td>放置（未）连接端子</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>T</td>
-									<td>Place text</td>
+									<td>放置文本</td>
 								</tr>
 							</tbody>
 							<tbody class="table-group-divider">
 								<tr>
-									<td>Edit</td>
+									<td>编辑</td>
 									<td>Ctrl/⌘ + C</td>
-									<td>Copy selection</td>
+									<td>复制所选内容</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + V</td>
-									<td>Paste selection</td>
+									<td>粘贴所选内容</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + X</td>
-									<td>Cut selection</td>
+									<td>剪切所选内容</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + Z</td>
-									<td>Undo</td>
+									<td>撤销</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + Y</td>
-									<td>Redo</td>
+									<td>重做</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ + A</td>
-									<td>Select all</td>
+									<td>全选</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Ctrl/⌘ (+ Shift) + R</td>
-									<td>Rotate (counter-)clockwise</td>
+									<td>（逆）时针旋转</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Shift + X</td>
-									<td>Flip at x-axis</td>
+									<td>沿 x 轴翻转</td>
 								</tr>
 								<tr>
 									<td></td>
 									<td>Shift + Y</td>
-									<td>Flip at y-axis</td>
+									<td>沿 y 轴翻转</td>
 								</tr>
 							</tbody>
 						</table>

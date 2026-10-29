@@ -1,6 +1,7 @@
 import { EditableProperty, Undo } from "../internal"
 
 export class BooleanProperty extends EditableProperty<boolean> {
+	public get allowsNull(): boolean { return this.nullable }
 	private checkBox: HTMLInputElement
 	private label: string
 	private nullable: boolean
@@ -31,7 +32,7 @@ export class BooleanProperty extends EditableProperty<boolean> {
 		{
 			let labelElement = document.createElement("label") as HTMLLabelElement
 			labelElement.classList.add("input-group-text", "flex-grow-1")
-			labelElement.innerHTML = this.label || "CheckBox"
+			labelElement.innerHTML = this.label || "复选框"
 			col.appendChild(labelElement)
 
 			let checkBoxContainer = document.createElement("div") as HTMLDivElement
